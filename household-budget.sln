@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35527.113
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HouseholdBudget.API", "HouseholdBudget.API\HouseholdBudget.API.csproj", "{6A9B2B73-C5D7-43C2-9369-250C938B1157}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{79F83D3D-3FD4-415A-9644-EB045676055D}"
+	ProjectSection(SolutionItems) = preProject
+		.dockerignore = .dockerignore
+		.editorconfig = .editorconfig
+		.gitignore = .gitignore
+		README.md = README.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6A9B2B73-C5D7-43C2-9369-250C938B1157}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A9B2B73-C5D7-43C2-9369-250C938B1157}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A9B2B73-C5D7-43C2-9369-250C938B1157}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A9B2B73-C5D7-43C2-9369-250C938B1157}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
