@@ -1,9 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HouseholdBudget.Domain\HouseholdBudget.Domain.csproj" />
+    <ProjectReference Include="..\HouseholdBudget.DTO\HouseholdBudget.DTO.csproj" />
+    <ProjectReference Include="..\HouseholdBudget.Mapping\HouseholdBudget.Mapping.csproj" />
+    <ProjectReference Include="..\HouseholdBudget.Repository\HouseholdBudget.Repository.csproj" />
+  </ItemGroup>
 
 </Project>
