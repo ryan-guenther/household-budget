@@ -11,7 +11,6 @@ namespace HouseholdBudget.Infrastructure
         }
 
         // Define DbSets for your entities
-        public DbSet<Expense> Expenses { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
         public DbSet<Account> Accounts { get; set; }
 
@@ -26,7 +25,6 @@ namespace HouseholdBudget.Infrastructure
             base.OnModelCreating(modelBuilder);
 
             // Fluent API configurations (optional)
-            modelBuilder.Entity<Expense>();
             modelBuilder.Entity<Account>();
             modelBuilder.Entity<Transaction>();
         }

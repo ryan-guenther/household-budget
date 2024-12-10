@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using HouseholdBudget.Service.Interfaces;
-using HouseholdBudget.Repository.Interfaces;
 using HouseholdBudget.Infrastructure;
 using DotNetEnv;
 using HouseholdBudget.Mapping;
@@ -45,7 +44,6 @@ builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =
 });
 
 // Register repositories
-builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 
@@ -53,7 +51,6 @@ builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 builder.Services.AddSingleton(MapsterConfig.Configure());
 
 // Register services
-builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 

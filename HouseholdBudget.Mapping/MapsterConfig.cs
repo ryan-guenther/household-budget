@@ -12,7 +12,6 @@ public static class MapsterConfig
         var config = new TypeAdapterConfig();
 
         // This automatically maps properties with the same name and compatible types
-        config.NewConfig<Expense, ExpenseDTO>();  // No need to define each property
         config.NewConfig<Transaction, TransactionDTO>();
         config.NewConfig<Account, AccountDTO>();
 
