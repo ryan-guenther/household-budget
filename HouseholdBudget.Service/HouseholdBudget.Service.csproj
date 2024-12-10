@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="IAccountService.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\HouseholdBudget.Domain\HouseholdBudget.Domain.csproj" />
     <ProjectReference Include="..\HouseholdBudget.DTO\HouseholdBudget.DTO.csproj" />
     <ProjectReference Include="..\HouseholdBudget.Mapping\HouseholdBudget.Mapping.csproj" />

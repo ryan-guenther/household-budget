@@ -46,12 +46,17 @@ builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =
 
 // Register repositories
 builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
+builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 
 // Register Mapster configuration
 builder.Services.AddSingleton(MapsterConfig.Configure());
 
 // Register services
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<ITransactionService, TransactionService>();
+
 
 // Add FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();

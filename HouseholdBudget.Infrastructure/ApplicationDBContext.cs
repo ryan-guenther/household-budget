@@ -12,6 +12,8 @@ namespace HouseholdBudget.Infrastructure
 
         // Define DbSets for your entities
         public DbSet<Expense> Expenses { get; set; }
+        public DbSet<Transaction> Transactions { get; set; }
+        public DbSet<Account> Accounts { get; set; }
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
@@ -24,10 +26,9 @@ namespace HouseholdBudget.Infrastructure
             base.OnModelCreating(modelBuilder);
 
             // Fluent API configurations (optional)
-            modelBuilder.Entity<Expense>(entity =>
-            {
-                entity.Property(e => e.Amount);
-            });
+            modelBuilder.Entity<Expense>();
+            modelBuilder.Entity<Account>();
+            modelBuilder.Entity<Transaction>();
         }
     }
 }
