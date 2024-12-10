@@ -10,10 +10,13 @@ namespace HouseholdBudget.Service
     public class TransactionService : ITransactionService
     {
         private readonly ITransactionRepository _transactionRepository;
+        private readonly IAccountRepository _accountRepository; 
 
-        public TransactionService(ITransactionRepository transactionRepository)
+        public TransactionService(ITransactionRepository transactionRepository,
+            IAccountRepository accountRepository)
         {
             _transactionRepository = transactionRepository;
+            _accountRepository = accountRepository;
         }
 
         public async Task<IEnumerable<TransactionDTO>> GetAllAsync()

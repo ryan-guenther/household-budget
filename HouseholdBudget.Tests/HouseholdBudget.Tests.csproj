@@ -17,6 +17,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\HouseholdBudget.DTO\HouseholdBudget.DTO.csproj" />
+    <ProjectReference Include="..\HouseholdBudget.Repository\HouseholdBudget.Repository.csproj" />
+    <ProjectReference Include="..\HouseholdBudget.Service\HouseholdBudget.Service.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
