@@ -6,16 +6,49 @@ using FluentValidation.AspNetCore;
 using HouseholdBudget.Service.Interfaces;
 using HouseholdBudget.Repository.Interfaces;
 using HouseholdBudget.Infrastructure;
+using DotNetEnv;
+using HouseholdBudget.Mapping;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var sqlConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// Load environment variables from the .env file (only in Development)
+if (builder.Environment.IsDevelopment())
+{
+    // Load environment variables from .env file
+    Env.Load();
+}
 
-// Add DbContext
-builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(sqlConnectionString));
+var sqlConnectionString = Environment.GetEnvironmentVariable("DATABASE_CONNECTION_STRING")
+                           ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Configure logging to console, enabling detailed logging in Development mode
+if (builder.Environment.IsDevelopment())
+{
+    builder.Logging.AddConsole(options =>
+    {
+        options.IncludeScopes = true; // Optionally add scopes for better logging in Development
+    });
+}
+
+// Add DbContext and conditionally enable sensitive data logging in Development mode
+builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+{
+    var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+    options.UseSqlServer(sqlConnectionString)
+           .UseLoggerFactory(loggerFactory);  // Enables logging
+
+    // Enable sensitive data logging only in Development mode
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();  // Enables detailed logging (e.g., parameters)
+    }
+});
 
 // Register repositories
 builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
+
+// Register Mapster configuration
+builder.Services.AddSingleton(MapsterConfig.Configure());
 
 // Register services
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
@@ -38,27 +71,15 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Configure Swagger/OpenAPI
+// Configure Swagger/OpenAPI for Development and Staging environments
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure the HTTP request pipeline for Development or Staging environments
 if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
-    // Configure logging to console
-    builder.Logging.AddConsole();
-
-    // Register DbContext with logging enabled
-    builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
-    {
-        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-               .UseLoggerFactory(loggerFactory) // Enables logging
-               .EnableSensitiveDataLogging();  // Enables detailed logging (e.g., parameters)
-    });
-
     app.UseSwagger();
     app.UseSwaggerUI();
 }

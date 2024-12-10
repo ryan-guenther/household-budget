@@ -1,13 +1,13 @@
-﻿using HouseholdBudget.Domain.Entities;
+﻿using HouseholdBudget.DTO;
 
 namespace HouseholdBudget.Service.Interfaces
 {
     public interface IExpenseService
     {
-        Task<IEnumerable<Expense>> GetAllAsync();
-        Task<Expense?> GetByIdAsync(int id);
-        Task AddAsync(Expense expense);
-        Task UpdateAsync(Expense expense);
+        Task<IEnumerable<ExpenseDTO>> GetAllAsync();
+        Task<ExpenseDTO?> GetByIdAsync(int id);
+        Task AddAsync(ExpenseDTO expense);
+        Task UpdateAsync(ExpenseDTO expense);
         Task DeleteAsync(int id);
     }
 }

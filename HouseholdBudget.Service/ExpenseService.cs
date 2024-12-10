@@ -1,7 +1,10 @@
 ﻿using HouseholdBudget.Domain.Entities;
+using HouseholdBudget.DTO;
 using HouseholdBudget.Repository;
 using HouseholdBudget.Repository.Interfaces;
 using HouseholdBudget.Service.Interfaces;
+
+using Mapster;
 
 namespace HouseholdBudget.Service
 {
@@ -14,23 +17,27 @@ namespace HouseholdBudget.Service
             _expenseRepository = expenseRepository;
         }
 
-        public async Task<IEnumerable<Expense>> GetAllAsync()
+        public async Task<IEnumerable<ExpenseDTO>> GetAllAsync()
         {
-            return await _expenseRepository.GetAllAsync();
+            var expenses = await _expenseRepository.GetAllAsync();
+            return expenses.Adapt<IEnumerable<ExpenseDTO>>();
         }
 
-        public async Task<Expense?> GetByIdAsync(int id)
+        public async Task<ExpenseDTO?> GetByIdAsync(int id)
         {
-            return await _expenseRepository.GetByIdAsync(id);
+            var expense = await _expenseRepository.GetByIdAsync(id);
+            return expense.Adapt<ExpenseDTO>();
         }
 
-        public async Task AddAsync(Expense expense)
+        public async Task AddAsync(ExpenseDTO expenseDto)
         {
+            var expense = expenseDto.Adapt<Expense>();
             await _expenseRepository.AddAsync(expense);
         }
 
-        public async Task UpdateAsync(Expense expense)
+        public async Task UpdateAsync(ExpenseDTO expenseDto)
         {
+            var expense = expenseDto.Adapt<Expense>();
             await _expenseRepository.UpdateAsync(expense);
         }
 

@@ -1,4 +1,4 @@
-using HouseholdBudget.Domain.Entities;
+using HouseholdBudget.DTO;
 using HouseholdBudget.Service.Interfaces;
 
 using Microsoft.AspNetCore.Mvc;
@@ -33,14 +33,14 @@ namespace HouseholdBudget.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] Expense expense)
+        public async Task<IActionResult> Create([FromBody] ExpenseDTO expense)
         {
             await _expenseService.AddAsync(expense);
             return CreatedAtAction(nameof(GetById), new { id = expense.Id }, expense);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] Expense expense)
+        public async Task<IActionResult> Update(int id, [FromBody] ExpenseDTO expense)
         {
             if (id != expense.Id) return BadRequest();
 
