@@ -1,127 +1,202 @@
-﻿using HouseholdBudget.DTO;
+﻿using Moq;
 using HouseholdBudget.Service;
-using HouseholdBudget.Service.Interfaces;
-using HouseholdBudget.Repository;
-using Moq;
-using FluentAssertions;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Xunit;
 using HouseholdBudget.Domain.Entities;
+using HouseholdBudget.DTO;
+using HouseholdBudget.Repository;
+using Microsoft.Extensions.Logging;
+using HouseholdBudget.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace HouseholdBudget.Tests
 {
     public class AccountServiceTests
     {
-        private readonly Mock<IAccountRepository> _accountRepoMock;
-        private readonly IAccountService _accountService;
+        private readonly ApplicationDbContext _dbContext;
+        private readonly Mock<IDbTransactionManager> _mockTransactionManager;
+        private readonly AccountService _accountService;
 
         public AccountServiceTests()
         {
-            // Mocking the IAccountRepository
-            _accountRepoMock = new Mock<IAccountRepository>();
+            // Setup an in-memory database
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString()) // Unique database for each test run
+                .Options;
 
-            // Injecting the mocked repository into the AccountService
-            _accountService = new AccountService(_accountRepoMock.Object);
+            // Create an instance of ApplicationDbContext
+            _dbContext = new ApplicationDbContext(options);
+
+            // Setup the mocked DbTransactionManager
+            _mockTransactionManager = new Mock<IDbTransactionManager>();
+
+            // Configure the Mocks for the Transaction Manager
+            _mockTransactionManager.Setup(tm => tm.BeginTransactionAsync())
+                .ReturnsAsync(_mockTransactionManager.Object);
+
+            _mockTransactionManager.Setup(tm => tm.CommitAsync()).Verifiable();
+            _mockTransactionManager.Setup(tm => tm.RollbackAsync()).Verifiable();
+
+            // Initialize TransactionService with the real repositories and mocked transaction manager
+            _accountService = new AccountService(
+                _mockTransactionManager.Object,
+                new AccountRepository(_dbContext),
+                Mock.Of<ILogger<AccountService>>() // Mocked logger
+            );
+
+            // Seed the database with initial data
+            SeedDatabase();
+        }
+
+        // Seed Account
+        const int seedAccountId = 1;
+        const string seedAccountName = "Test Account";
+        const AccountType seedAccountType = AccountType.Savings;
+        const decimal seedAccountBalance = 1000;
+
+        int _seedNextAvailableAccountId;
+
+        private void SeedDatabase()
+        {
+            var account = new Account(seedAccountId, seedAccountName, seedAccountType, seedAccountBalance);
+
+            _dbContext.Accounts.Add(account);
+            _dbContext.SaveChanges();
+
+            var lastUsedAccountId = _dbContext.Accounts
+                .OrderByDescending(t => t.Id)
+                .Select(t => t.Id)
+                .FirstOrDefault();
+
+            _seedNextAvailableAccountId = lastUsedAccountId + 1;
         }
 
         [Fact]
-        public async Task GetAllAsync_ShouldReturnListOfAccounts()
+        public async Task AddAccount_ShouldBeginAndCommitTransaction()
         {
-            // Arrange: Mock the repository's GetAllAsync method to return domain Account objects
-            var mockAccounts = new List<Account>
+            // Arrange
+            int accountId = _seedNextAvailableAccountId;
+            decimal startingBalance = -200;
+            string accountName = "Test Account add.";
+            AccountType accountType = AccountType.CreditCard;
+            var accountDto = new AccountDTO() { Id = accountId, Name = accountName, Type = accountType.ToString(), Balance = startingBalance };
+
+            // Act
+            await _accountService.AddAsync(accountDto);
+
+            // Assert that the account is saved to the in-memory DB
+            var account = await _dbContext.Accounts.FindAsync(accountId);
+            Assert.NotNull(account);
+            Assert.Equal(startingBalance, account.Balance);
+            Assert.Equal(accountType, account.Type);
+            Assert.Equal(accountName, account.Name);
+
+            // Verify that transaction methods were called on the mocked manager
+            _mockTransactionManager.Verify(tm => tm.BeginTransactionAsync(), Times.Once);
+            _mockTransactionManager.Verify(tm => tm.CommitAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task AddAccount_ShouldRollbackOnError()
+        {
+            // Arrange
+            var accountDto = new AccountDTO { Id = seedAccountId, Balance = 100, Type = "Savings"}; // Existing Account Id
+
+            // Act
+            var exception = await Assert.ThrowsAsync<ApplicationException>(() => _accountService.AddAsync(accountDto));
+
+            // Assert
+            Assert.Contains("An error occurred while adding the account", exception.Message);
+
+            // Verify that transaction methods were called on the mocked manager
+            _mockTransactionManager.Verify(tm => tm.RollbackAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateAccount_ShouldUpdateAndCommitTransaction()
+        {
+            // Arrange
+            int accountId = seedAccountId;
+            decimal accountBalance = (decimal)375.12;
+            string accountName = "New account name.";
+            var accountType = AccountType.Chequing;
+
+            var accountDto = new AccountDTO { Id = accountId, Balance = accountBalance, Name=accountName, Type = accountType.ToString()};
+
+            // Act
+            await _accountService.UpdateAsync(accountDto);
+
+            // Assert that the account was updated in the in-memory DB
+            var account = await _dbContext.Accounts.FindAsync(accountId);
+            Assert.NotNull(account);
+            Assert.Equal(accountBalance, account.Balance);
+            Assert.Equal(accountType, account.Type);
+            Assert.Equal(accountName, account.Name);
+
+            // Verify that transaction methods were called on the mocked manager
+            _mockTransactionManager.Verify(tm => tm.CommitAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteAccount_ShouldDeleteAndCommitTransaction()
+        {
+            // Arrange
+            var accountIdToDelete = seedAccountId;
+
+            // Act
+            await _accountService.DeleteAsync(accountIdToDelete);  // Deleting the account
+
+            // Assert that the account was deleted from the in-memory DB
+            var account = await _dbContext.Accounts.FindAsync(accountIdToDelete);
+            Assert.Null(account);  // account should be deleted
+
+            // Verify that transaction methods were called on the mocked manager
+            _mockTransactionManager.Verify(tm => tm.BeginTransactionAsync(), Times.Once);
+            _mockTransactionManager.Verify(tm => tm.CommitAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetAllAccounts_ShouldReturnAccounts()
+        {
+            // Arrange
+            var accounts = new List<Account>
             {
-                new Account { Id = 1, Name = "Chequing Account", Balance = 1000, Type = AccountType.Chequing },
-                new Account { Id = 2, Name = "Savings Account", Balance = 5000, Type = AccountType.Savings }
+                new Account { Id = _seedNextAvailableAccountId, Name = "Account 1", Type = AccountType.Chequing },
+                new Account { Id = _seedNextAvailableAccountId + 1, Name = "Account 2", Type = AccountType.Savings }
             };
+            var expectedAccountsCount = accounts.Count() + (_seedNextAvailableAccountId - 1);
+            _dbContext.Accounts.AddRange(accounts);
+            _dbContext.SaveChanges();
 
-            _accountRepoMock.Setup(repo => repo.GetAllAsync())
-                            .ReturnsAsync(mockAccounts);
-
-            // Act: Call the service method
+            // Act
             var result = await _accountService.GetAllAsync();
 
-            // Assert: Verify the result and expectations
-            result.Should().HaveCount(2);  // We expect two accounts
-            result.Should().Contain(a => a.Name == "Chequing Account");
-            result.Should().Contain(a => a.Name == "Savings Account");
+            // Assert
+            Assert.Equal(expectedAccountsCount, result.Count());
         }
 
         [Fact]
-        public async Task GetByIdAsync_ShouldReturnAccount_WhenAccountExists()
+        public async Task GetAccountById_ShouldReturnAccount_WhenExists()
         {
-            // Arrange: Mock the repository's GetByIdAsync method to return a domain Account object
-            var mockAccount = new Account { Id = 1, Name = "Chequing Account", Balance = 1000, Type = AccountType.Chequing };
+            // Arrange
+            var account = new Account { Id = _seedNextAvailableAccountId, Balance = 100, Type = AccountType.Savings};
+            _dbContext.Accounts.Add(account);
+            _dbContext.SaveChanges();
 
-            _accountRepoMock.Setup(repo => repo.GetByIdAsync(1))
-                            .ReturnsAsync(mockAccount);
+            // Act
+            var result = await _accountService.GetByIdAsync(_seedNextAvailableAccountId);
 
-            // Act: Call the service method
-            var result = await _accountService.GetByIdAsync(1);
-
-            // Assert: Verify the result
-            result.Should().NotBeNull();
-            result.Should().BeEquivalentTo(new AccountDTO { Id = 1, Name = "Chequing Account", Balance = 1000, Type = "Chequing" });
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(_seedNextAvailableAccountId, result?.Id);
         }
 
         [Fact]
-        public async Task GetByIdAsync_ShouldReturnNull_WhenAccountDoesNotExist()
+        public async Task GetAccountById_ShouldReturnNull_WhenNotExists()
         {
-            // Arrange: Mock the repository's GetByIdAsync method to return null (no account found)
-            _accountRepoMock.Setup(repo => repo.GetByIdAsync(It.IsAny<int>()))
-                            .ReturnsAsync((Account)null);
+            // Act
+            var result = await _accountService.GetByIdAsync(99); // Non-existing account
 
-            // Act: Call the service method
-            var result = await _accountService.GetByIdAsync(999);  // Non-existing account ID
-
-            // Assert: Verify the result is null
-            result.Should().BeNull();
-        }
-
-        [Fact]
-        public async Task AddAsync_ShouldAddNewAccount()
-        {
-            // Arrange: Create a new account DTO
-            var newAccount = new AccountDTO { Name = "New Account", Balance = 1000, Type = "Chequing" };
-
-            _accountRepoMock.Setup(repo => repo.AddAsync(It.IsAny<Account>()))
-                            .Returns(Task.CompletedTask);  // Simulating that the account is added
-
-            // Act: Call the service method to add a new account
-            await _accountService.AddAsync(newAccount);
-
-            // Assert: Verify that the repository's AddAsync was called
-            _accountRepoMock.Verify(repo => repo.AddAsync(It.IsAny<Account>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task UpdateAsync_ShouldUpdateExistingAccount()
-        {
-            // Arrange: Create an updated account DTO
-            var updatedAccount = new AccountDTO { Id = 1, Name = "Updated Account", Balance = 1500, Type = "Savings" };
-
-            _accountRepoMock.Setup(repo => repo.UpdateAsync(It.IsAny<Account>()))
-                            .Returns(Task.CompletedTask);  // Simulating that the account is updated
-
-            // Act: Call the service method to update the account
-            await _accountService.UpdateAsync(updatedAccount);
-
-            // Assert: Verify that the repository's UpdateAsync was called
-            _accountRepoMock.Verify(repo => repo.UpdateAsync(It.IsAny<Account>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task DeleteAsync_ShouldDeleteAccount_WhenAccountExists()
-        {
-            // Arrange: Mock the repository's DeleteAsync method
-            _accountRepoMock.Setup(repo => repo.DeleteAsync(It.IsAny<int>()))
-                            .Returns(Task.CompletedTask);  // Simulating that the account is deleted
-
-            // Act: Call the service method to delete the account
-            await _accountService.DeleteAsync(1);  // Account ID to delete
-
-            // Assert: Verify that the repository's DeleteAsync was called
-            _accountRepoMock.Verify(repo => repo.DeleteAsync(1), Times.Once);
+            // Assert
+            Assert.Null(result);
         }
     }
 }
