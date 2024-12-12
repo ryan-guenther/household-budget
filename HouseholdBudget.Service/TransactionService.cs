@@ -4,7 +4,7 @@ using HouseholdBudget.Repository;
 using HouseholdBudget.Service.Interfaces;
 using Mapster;
 using Microsoft.Extensions.Logging;
-
+using HouseholdBudget.BusinessLogic;
 
 public class TransactionService : ITransactionService
 {
@@ -79,7 +79,7 @@ public class TransactionService : ITransactionService
                 transaction = transactionDto.Adapt<Transaction>();
                 transaction = await _transactionRepository.AddAsync(transaction);
 
-                account = AdjustAccountBalance(account, transaction.Type, transaction.Amount);
+                account.Balance = AccountBL.AdjustAccountBalance(account.Balance, transaction.Type, transaction.Amount);
                 await _accountRepository.UpdateAsync(account);
 
                 await tm.CommitAsync();
@@ -96,21 +96,6 @@ public class TransactionService : ITransactionService
         }
 
         return transaction.Adapt<TransactionDetailResponseDTO>();  // Automatically map from Transaction to TransactionDTO
-    }
-
-    // Helper method for adjusting account balance
-    private Account AdjustAccountBalance(Account account, TransactionType transactionType, decimal amount)
-    {
-        if (transactionType == TransactionType.Credit)
-        {
-            account.Balance += amount;
-        }
-        else if (transactionType == TransactionType.Expense)
-        {
-            account.Balance -= amount;
-        }
-
-        return account;
     }
 
     public async Task<TransactionDetailResponseDTO> UpdateAsync(TransactionUpdateRequestDTO transactionDto)
@@ -156,7 +141,7 @@ public class TransactionService : ITransactionService
                 transaction.Description = updatedTransaction.Description;
 
                 // Update the account balance inside the transaction scope
-                account = AdjustAccountBalance(account, transaction.Type, amountOffset);
+                account.Balance = AccountBL.AdjustAccountBalance(account.Balance, transaction.Type, amountOffset);
 
                 // Update the transaction
                 transaction = await _transactionRepository.UpdateAsync(transaction);
@@ -202,7 +187,7 @@ public class TransactionService : ITransactionService
                 }
 
                 // Adjust the account balance based on the transaction type
-                account = AdjustAccountBalance(account, transactionToDelete.Type, -transactionToDelete.Amount);
+                account.Balance = AccountBL.AdjustAccountBalance(account.Balance, transactionToDelete.Type, -transactionToDelete.Amount);
 
                 // Update the account balance
                 await _accountRepository.UpdateAsync(account);

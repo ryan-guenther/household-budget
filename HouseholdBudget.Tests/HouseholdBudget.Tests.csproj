@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\HouseholdBudget.BusinessLogic\HouseholdBudget.BusinessLogic.csproj" />
     <ProjectReference Include="..\HouseholdBudget.DTO\HouseholdBudget.DTO.csproj" />
     <ProjectReference Include="..\HouseholdBudget.Repository\HouseholdBudget.Repository.csproj" />
     <ProjectReference Include="..\HouseholdBudget.Service\HouseholdBudget.Service.csproj" />

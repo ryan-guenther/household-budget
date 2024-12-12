@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using HouseholdBudget.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
-namespace HouseholdBudget.Tests
+namespace HouseholdBudget.Tests.IntegrationTests
 {
     public class AccountServiceTests
     {
@@ -98,7 +98,7 @@ namespace HouseholdBudget.Tests
         public async Task AddAccount_ShouldRollbackOnError()
         {
             // Arrange
-            var accountDto = new DTO.Account.AccountCreateRequestDTO { Id = seedAccountId, Balance = 100, Type = "Savings"}; // Existing Account Id
+            var accountDto = new DTO.Account.AccountCreateRequestDTO { Id = seedAccountId, Balance = 100, Type = "Savings" }; // Existing Account Id
 
             // Act
             var exception = await Assert.ThrowsAsync<ApplicationException>(() => _accountService.AddAsync(accountDto));
@@ -119,7 +119,7 @@ namespace HouseholdBudget.Tests
             string accountName = "New account name.";
             var accountType = AccountType.Chequing;
 
-            var accountDto = new DTO.Account.AccountUpdateRequestDTO { Id = accountId, Balance = accountBalance, Name=accountName, Type = accountType.ToString()};
+            var accountDto = new DTO.Account.AccountUpdateRequestDTO { Id = accountId, Balance = accountBalance, Name = accountName, Type = accountType.ToString() };
 
             // Act
             await _accountService.UpdateAsync(accountDto);
@@ -177,7 +177,7 @@ namespace HouseholdBudget.Tests
         public async Task GetAccountById_ShouldReturnAccount_WhenExists()
         {
             // Arrange
-            var account = new Account { Id = _seedNextAvailableAccountId, Balance = 100, Type = AccountType.Savings};
+            var account = new Account { Id = _seedNextAvailableAccountId, Balance = 100, Type = AccountType.Savings };
             _dbContext.Accounts.Add(account);
             _dbContext.SaveChanges();
 

@@ -6,7 +6,7 @@ using HouseholdBudget.Infrastructure;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 
-namespace HouseholdBudget.Tests
+namespace HouseholdBudget.Tests.IntegrationTests
 {
     public class TransactionServiceTests
     {
@@ -154,7 +154,7 @@ namespace HouseholdBudget.Tests
             int transactionId = seedCreditTransactionId;
             decimal transactionAmount = 150;
             var transactionType = TransactionType.Expense;
-            var transactionDto = new DTO.Transaction.TransactionUpdateRequestDTO { Id = transactionId, Amount = transactionAmount, Type = transactionType.ToString()};
+            var transactionDto = new DTO.Transaction.TransactionUpdateRequestDTO { Id = transactionId, Amount = transactionAmount, Type = transactionType.ToString() };
             var expectedBalance = seedAccountBalance - seedCreditTransactionAmount - transactionAmount;
 
             // Act
@@ -197,7 +197,7 @@ namespace HouseholdBudget.Tests
             // Verify that the balance adjustments were made to the Account
             var account = await _dbContext.Accounts.FindAsync(seedAccountId);
             Assert.NotNull(account);  // Account should still exist
-            Assert.Equal(adjustedAccountBalance, account.Balance);  
+            Assert.Equal(adjustedAccountBalance, account.Balance);
 
             // Verify that transaction methods were called on the mocked manager
             _mockTransactionManager.Verify(tm => tm.BeginTransactionAsync(), Times.Once);
