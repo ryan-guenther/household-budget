@@ -1,4 +1,4 @@
-﻿using HouseholdBudget.DTO;
+﻿using HouseholdBudget.DTO.Transaction;
 using HouseholdBudget.Service.Interfaces;
 
 using Microsoft.AspNetCore.Mvc;
@@ -17,14 +17,14 @@ namespace HouseholdBudget.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<ActionResult<TransactionListResponseDTO>> GetAll()
         {
             var transactions = await _transactionService.GetAllAsync();
             return Ok(transactions);  // Returns TransactionDTOs
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        public async Task<ActionResult<TransactionDetailResponseDTO>> GetById(int id)
         {
             var transaction = await _transactionService.GetByIdAsync(id);
             if (transaction == null) return NotFound();
@@ -33,19 +33,19 @@ namespace HouseholdBudget.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] TransactionDTO transactionDto)
+        public async Task<ActionResult<TransactionDetailResponseDTO>> Create([FromBody] TransactionCreateRequestDTO transactionDto)
         {
-            await _transactionService.AddAsync(transactionDto);
-            return CreatedAtAction(nameof(GetById), new { id = transactionDto.Id }, transactionDto);
+            var transactionDetail = await _transactionService.AddAsync(transactionDto);
+            return Ok(transactionDetail);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] TransactionDTO transactionDto)
+        public async Task<ActionResult<TransactionDetailResponseDTO>> Update(int id, [FromBody] TransactionUpdateRequestDTO transactionDto)
         {
             if (id != transactionDto.Id) return BadRequest();
 
-            await _transactionService.UpdateAsync(transactionDto);
-            return NoContent();
+            TransactionDetailResponseDTO transactionDetail = await _transactionService.UpdateAsync(transactionDto);
+            return Ok(transactionDetail);
         }
 
         [HttpDelete("{id}")]

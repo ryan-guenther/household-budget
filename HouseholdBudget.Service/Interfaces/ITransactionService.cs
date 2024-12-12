@@ -1,13 +1,13 @@
-﻿using HouseholdBudget.DTO;
+﻿using HouseholdBudget.DTO.Transaction;
 
 namespace HouseholdBudget.Service.Interfaces
 {
     public interface ITransactionService
     {
-        Task<IEnumerable<TransactionDTO>> GetAllAsync();
-        Task<TransactionDTO?> GetByIdAsync(int id);
-        Task AddAsync(TransactionDTO transactionDto);
-        Task UpdateAsync(TransactionDTO transactionDto);
+        Task<IEnumerable<TransactionListResponseDTO>> GetAllAsync();
+        Task<TransactionDetailResponseDTO?> GetByIdAsync(int id);
+        Task<TransactionDetailResponseDTO> AddAsync(TransactionCreateRequestDTO transactionDto);
+        Task<TransactionDetailResponseDTO> UpdateAsync(TransactionUpdateRequestDTO transactionDto);
         Task DeleteAsync(int id);
     }
 }

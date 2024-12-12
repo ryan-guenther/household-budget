@@ -98,7 +98,7 @@ namespace HouseholdBudget.Tests
             // Arrange
             int transactionId = _seedNextAvailableTransactionId;
             decimal transactionAmount = 200;
-            var transactionDto = new TransactionDTO { Id = transactionId, Amount = transactionAmount, Type = "Expense", AccountId = seedAccountId };
+            var transactionDto = new DTO.Transaction.TransactionCreateRequestDTO { Id = transactionId, Amount = transactionAmount, Type = "Expense", AccountId = seedAccountId };
             decimal expectedAccountBalance = seedAccountBalance - transactionAmount;
 
             // Act
@@ -128,7 +128,7 @@ namespace HouseholdBudget.Tests
         public async Task AddTransaction_ShouldRollbackOnError()
         {
             // Arrange
-            var transactionDto = new TransactionDTO { Id = _seedNextAvailableTransactionId, Amount = 100, Type = "Expense", AccountId = 99 }; // Non-existing account
+            var transactionDto = new DTO.Transaction.TransactionCreateRequestDTO { Id = _seedNextAvailableTransactionId, Amount = 100, Type = "Expense", AccountId = 99 }; // Non-existing account
 
             // Act
             var exception = await Assert.ThrowsAsync<ApplicationException>(() => _transactionService.AddAsync(transactionDto));
@@ -154,7 +154,7 @@ namespace HouseholdBudget.Tests
             int transactionId = seedCreditTransactionId;
             decimal transactionAmount = 150;
             var transactionType = TransactionType.Expense;
-            var transactionDto = new TransactionDTO { Id = transactionId, Amount = transactionAmount, Type = transactionType.ToString(), AccountId = seedAccountId };
+            var transactionDto = new DTO.Transaction.TransactionUpdateRequestDTO { Id = transactionId, Amount = transactionAmount, Type = transactionType.ToString()};
             var expectedBalance = seedAccountBalance - seedCreditTransactionAmount - transactionAmount;
 
             // Act

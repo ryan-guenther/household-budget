@@ -1,5 +1,5 @@
 ﻿using HouseholdBudget.Domain.Entities;
-using HouseholdBudget.DTO;
+using HouseholdBudget.DTO.Account;
 using HouseholdBudget.Repository;
 using HouseholdBudget.Service.Interfaces;
 using Mapster;
@@ -24,12 +24,13 @@ namespace HouseholdBudget.Service
             _logger = logger;
         }
 
-        public async Task<IEnumerable<AccountDTO>> GetAllAsync()
+        public async Task<IEnumerable<AccountListResponseDTO>> GetAllAsync()
         {
+            IEnumerable<Account> accounts;
+
             try
             {
-                var accounts = await _accountRepository.GetAllAsync();
-                return accounts.Adapt<IEnumerable<AccountDTO>>(); // Automatically map from Account to AccountDTO
+                accounts = await _accountRepository.GetAllAsync();
             }
             catch (Exception ex)
             {
@@ -37,19 +38,22 @@ namespace HouseholdBudget.Service
                 _logger.LogError(error, ex);
                 throw new ApplicationException($"{error}: {ex.Message}", ex);
             }
+
+            return accounts.Adapt<IEnumerable<AccountListResponseDTO>>(); // Automatically map from Account to AccountListResponseDTO
         }
 
-        public async Task<AccountDTO?> GetByIdAsync(int accountId)
+        public async Task<AccountDetailResponseDTO?> GetByIdAsync(int accountId)
         {
+            Account? account;
+
             try
             {
-                var account = await _accountRepository.GetByIdAsync(accountId);
+                account = await _accountRepository.GetByIdAsync(accountId);
                 if (account == null)
                 {
                     _logger.LogWarning($"Account with ID {accountId} was not found.");
                     return null;  // Account not found
                 }
-                return account.Adapt<AccountDTO>();  // Automatically map from Account to AccountDTO
             }
             catch (Exception ex)
             {
@@ -57,17 +61,21 @@ namespace HouseholdBudget.Service
                 _logger.LogError(error, ex);
                 throw new ApplicationException($"{error} : {ex.Message}", ex);
             }
+
+            return account.Adapt<AccountDetailResponseDTO>();  // Automatically map from Account to AccountDetailResponseDTO
         }
 
-        public async Task AddAsync(AccountDTO accountDto)
+        public async Task<AccountDetailResponseDTO> AddAsync(AccountCreateRequestDTO accountDto)
         {
+            Account account;
+
             await using (var tm = await _transactionManager.BeginTransactionAsync())
             {
                 try
                 {
-                    var account = accountDto.Adapt<Account>();  // Automatically map from AccountDTO to Account
-                    
-                    await _accountRepository.AddAsync(account);
+                    account = accountDto.Adapt<Account>();  // Automatically map from AccountCreateRequestDTO to Account
+
+                    account = await _accountRepository.AddAsync(account);
 
                     await tm.CommitAsync();
 
@@ -81,35 +89,38 @@ namespace HouseholdBudget.Service
                     throw new ApplicationException($"{error}: {ex.Message}", ex);
                 }
             }
+
+            return account.Adapt<AccountDetailResponseDTO>();  // Automatically map from Account to AccountDetailResponseDTO
         }
 
-        public async Task UpdateAsync(AccountDTO accountDto)
+        public async Task<AccountDetailResponseDTO> UpdateAsync(AccountUpdateRequestDTO accountDto)
         {
+            Account? account;
             await using (var tm = await _transactionManager.BeginTransactionAsync())
             {
                 try
                 {
-                    var originalAccount = await _accountRepository.GetByIdAsync(accountDto.Id);
-                    if(originalAccount == null)
+                    account = await _accountRepository.GetByIdAsync(accountDto.Id);
+                    if(account == null)
                     {
                         _logger.LogError($"Account with ID {accountDto.Id} not found.");
                         throw new ArgumentException("Account not found.");
                     }
 
-                    var account = accountDto.Adapt<Account>();  // Automatically map from AccountDTO to Account
+                    var updatedAccount = accountDto.Adapt<Account>();  // Automatically map from AccountUpdateRequestDTO to Account
 
-                    // adjust the properties on the oriignalAccount to update
-                    originalAccount.Name = account.Name;
-                    originalAccount.Balance = account.Balance;
-                    originalAccount.Type = account.Type;
+                    // adjust the properties on the originalAccount to update
+                    account.Name = updatedAccount.Name;
+                    account.Balance = updatedAccount.Balance;
+                    account.Type = updatedAccount.Type;
 
                     // Update the Account
-                    await _accountRepository.UpdateAsync(originalAccount);
+                    account = await _accountRepository.UpdateAsync(account);
 
                     // Commit the transaction
                     await tm.CommitAsync();
 
-                    _logger.LogInformation($"Account with ID {originalAccount.Id} updated successfully.");
+                    _logger.LogInformation($"Account with ID {account.Id} updated successfully.");
                 }
                 catch (Exception ex)
                 {
@@ -118,7 +129,9 @@ namespace HouseholdBudget.Service
                     await tm.RollbackAsync();
                     throw new ApplicationException($"{error}: {ex.Message}", ex);
                 }
-            }       
+            }
+            
+            return account.Adapt<AccountDetailResponseDTO>();  // Automatically map from Account to AccountDetailResponseDTO
         }
 
         public async Task DeleteAsync(int accountId)

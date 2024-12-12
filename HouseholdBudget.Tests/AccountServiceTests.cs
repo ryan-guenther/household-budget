@@ -77,7 +77,7 @@ namespace HouseholdBudget.Tests
             decimal startingBalance = -200;
             string accountName = "Test Account add.";
             AccountType accountType = AccountType.CreditCard;
-            var accountDto = new AccountDTO() { Id = accountId, Name = accountName, Type = accountType.ToString(), Balance = startingBalance };
+            var accountDto = new DTO.Account.AccountCreateRequestDTO() { Id = accountId, Name = accountName, Type = accountType.ToString(), Balance = startingBalance };
 
             // Act
             await _accountService.AddAsync(accountDto);
@@ -98,7 +98,7 @@ namespace HouseholdBudget.Tests
         public async Task AddAccount_ShouldRollbackOnError()
         {
             // Arrange
-            var accountDto = new AccountDTO { Id = seedAccountId, Balance = 100, Type = "Savings"}; // Existing Account Id
+            var accountDto = new DTO.Account.AccountCreateRequestDTO { Id = seedAccountId, Balance = 100, Type = "Savings"}; // Existing Account Id
 
             // Act
             var exception = await Assert.ThrowsAsync<ApplicationException>(() => _accountService.AddAsync(accountDto));
@@ -119,7 +119,7 @@ namespace HouseholdBudget.Tests
             string accountName = "New account name.";
             var accountType = AccountType.Chequing;
 
-            var accountDto = new AccountDTO { Id = accountId, Balance = accountBalance, Name=accountName, Type = accountType.ToString()};
+            var accountDto = new DTO.Account.AccountUpdateRequestDTO { Id = accountId, Balance = accountBalance, Name=accountName, Type = accountType.ToString()};
 
             // Act
             await _accountService.UpdateAsync(accountDto);

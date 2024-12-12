@@ -1,5 +1,7 @@
 ﻿using HouseholdBudget.Domain.Entities;
 using HouseholdBudget.DTO;
+using HouseholdBudget.DTO.Account;
+using HouseholdBudget.DTO.Transaction;
 
 using Mapster;
 
@@ -11,9 +13,21 @@ public static class MapsterConfig
     {
         var config = new TypeAdapterConfig();
 
-        // This automatically maps properties with the same name and compatible types
-        config.NewConfig<Transaction, TransactionDTO>();
-        config.NewConfig<Account, AccountDTO>();
+        // Outgoing Transaciton Mappings
+        config.NewConfig<Transaction, TransactionListResponseDTO>();
+        config.NewConfig<Transaction, TransactionDetailResponseDTO>();
+
+        // Incoming Transaction Mappings
+        config.NewConfig<TransactionCreateRequestDTO, Transaction>();
+        config.NewConfig<TransactionUpdateRequestDTO, Transaction>();
+
+        // Outgoing Account Mappings
+        config.NewConfig<Account, AccountListResponseDTO>();
+        config.NewConfig<Account, AccountDetailResponseDTO>();
+
+        // Incoming Account Mappings
+        config.NewConfig<AccountCreateRequestDTO, Account>();
+        config.NewConfig<AccountUpdateRequestDTO, Account>();
 
         return config;
     }

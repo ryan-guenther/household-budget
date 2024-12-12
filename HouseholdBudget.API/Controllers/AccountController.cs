@@ -1,7 +1,6 @@
 ﻿using HouseholdBudget.Service.Interfaces;
-using HouseholdBudget.DTO;
 using Microsoft.AspNetCore.Mvc;
-using HouseholdBudget.Service;
+using HouseholdBudget.DTO.Account;
 
 namespace HouseholdBudget.API.Controllers
 {
@@ -17,14 +16,14 @@ namespace HouseholdBudget.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<ActionResult<IEnumerable<AccountListResponseDTO>>> GetAll()
         {
-            var accounts = await _accountService.GetAllAsync();
-            return Ok(accounts);  // Returns AccountDTOs
+            var accountList = await _accountService.GetAllAsync();
+            return Ok(accountList);  // Returns AccountDTOs
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        public async Task<ActionResult<IEnumerable<AccountDetailResponseDTO>>> GetById(int id)
         {
             var account = await _accountService.GetByIdAsync(id);
             if (account == null) return NotFound();
@@ -33,19 +32,19 @@ namespace HouseholdBudget.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] AccountDTO accountDto)
+        public async Task<ActionResult<AccountDetailResponseDTO>> Create([FromBody] AccountCreateRequestDTO accountDto)
         {
-            await _accountService.AddAsync(accountDto);
-            return CreatedAtAction(nameof(GetById), new { id = accountDto.Id }, accountDto);
+            var accountDetail = await _accountService.AddAsync(accountDto);
+            return Ok(accountDetail);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] AccountDTO accountDto)
+        public async Task<ActionResult<AccountDetailResponseDTO>> Update(int id, [FromBody] AccountUpdateRequestDTO accountDto)
         {
             if (id != accountDto.Id) return BadRequest();
 
-            await _accountService.UpdateAsync(accountDto);
-            return NoContent();
+            var accountDetail = await _accountService.UpdateAsync(accountDto);
+            return Ok(accountDetail);
         }
 
         [HttpDelete("{id}")]

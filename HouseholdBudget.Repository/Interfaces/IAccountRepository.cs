@@ -6,8 +6,8 @@ namespace HouseholdBudget.Repository
     {
         Task<IEnumerable<Account>> GetAllAsync();
         Task<Account?> GetByIdAsync(int id);
-        Task AddAsync(Account account);
-        Task UpdateAsync(Account account);
+        Task<Account> AddAsync(Account account);
+        Task<Account> UpdateAsync(Account account);
         Task DeleteAsync(int id);
     }
 }

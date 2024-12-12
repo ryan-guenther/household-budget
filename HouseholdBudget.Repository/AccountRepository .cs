@@ -24,16 +24,18 @@ namespace HouseholdBudget.Repository
             return await _context.Accounts.Include(a => a.Transactions).FirstOrDefaultAsync(a => a.Id == id);
         }
 
-        public async Task AddAsync(Account account)
+        public async Task<Account> AddAsync(Account account)
         {
             await _context.Accounts.AddAsync(account);
             await _context.SaveChangesAsync();
+            return account;
         }
 
-        public async Task UpdateAsync(Account account)
+        public async Task<Account> UpdateAsync(Account account)
         {
             _context.Accounts.Update(account);
             await _context.SaveChangesAsync();
+            return account;
         }
 
         public async Task DeleteAsync(int id)

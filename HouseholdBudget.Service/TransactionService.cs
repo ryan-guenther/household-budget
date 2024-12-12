@@ -1,5 +1,5 @@
 ﻿using HouseholdBudget.Domain.Entities;
-using HouseholdBudget.DTO;
+using HouseholdBudget.DTO.Transaction;
 using HouseholdBudget.Repository;
 using HouseholdBudget.Service.Interfaces;
 using Mapster;
@@ -25,12 +25,13 @@ public class TransactionService : ITransactionService
         _logger = logger;
     }
 
-    public async Task<IEnumerable<TransactionDTO>> GetAllAsync()
+    public async Task<IEnumerable<TransactionListResponseDTO>> GetAllAsync()
     {
+        IEnumerable<Transaction> transactions;
+
         try
         {
-            var transactions = await _transactionRepository.GetAllAsync();
-            return transactions.Adapt<IEnumerable<TransactionDTO>>();  // Automatically map from Transaction to TransactionDTO
+            transactions = await _transactionRepository.GetAllAsync();
         }
         catch (Exception ex)
         {
@@ -38,14 +39,17 @@ public class TransactionService : ITransactionService
             _logger.LogError(error, ex);
             throw new ApplicationException($"{error}: {ex.Message}", ex);
         }
+
+        return transactions.Adapt<IEnumerable<TransactionListResponseDTO>>();  // Automatically map from Transaction to TransactionDTO
     }
 
-    public async Task<TransactionDTO?> GetByIdAsync(int transactionId)
+    public async Task<TransactionDetailResponseDTO?> GetByIdAsync(int transactionId)
     {
+        Transaction? transaction;
+
         try
         {
-            var transaction = await _transactionRepository.GetByIdAsync(transactionId);
-            return transaction?.Adapt<TransactionDTO>();  // Automatically map from Transaction to TransactionDTO
+            transaction = await _transactionRepository.GetByIdAsync(transactionId);
         }
         catch (Exception ex)
         {
@@ -53,10 +57,14 @@ public class TransactionService : ITransactionService
             _logger.LogError(error, ex);
             throw new ApplicationException($"{error}: {ex.Message}", ex);
         }
+
+        return transaction?.Adapt<TransactionDetailResponseDTO>();  // Automatically map from Transaction to TransactionDTO
     }
 
-    public async Task AddAsync(TransactionDTO transactionDto)
-    {
+    public async Task<TransactionDetailResponseDTO> AddAsync(TransactionCreateRequestDTO transactionDto)
+    {   
+        Transaction transaction = new();
+
         await using (var tm = await _transactionManager.BeginTransactionAsync())
         {
             try
@@ -68,15 +76,15 @@ public class TransactionService : ITransactionService
                     throw new ArgumentException("Account not found.");
                 }
 
-                var transactionEntity = transactionDto.Adapt<Transaction>();
-                await _transactionRepository.AddAsync(transactionEntity);
+                transaction = transactionDto.Adapt<Transaction>();
+                transaction = await _transactionRepository.AddAsync(transaction);
 
-                account = AdjustAccountBalance(account, transactionEntity.Type, transactionEntity.Amount);
+                account = AdjustAccountBalance(account, transaction.Type, transaction.Amount);
                 await _accountRepository.UpdateAsync(account);
 
                 await tm.CommitAsync();
 
-                _logger.LogInformation($"Transaction with ID {transactionEntity.Id} added and committed successfully.");
+                _logger.LogInformation($"Transaction with ID {transaction.Id} added and committed successfully.");
             }
             catch (Exception ex)
             {
@@ -86,8 +94,9 @@ public class TransactionService : ITransactionService
                 throw new ApplicationException($"{error}: {ex.Message}", ex);
             }
         }
-    }
 
+        return transaction.Adapt<TransactionDetailResponseDTO>();  // Automatically map from Transaction to TransactionDTO
+    }
 
     // Helper method for adjusting account balance
     private Account AdjustAccountBalance(Account account, TransactionType transactionType, decimal amount)
@@ -104,57 +113,59 @@ public class TransactionService : ITransactionService
         return account;
     }
 
-    public async Task UpdateAsync(TransactionDTO transactionDto)
+    public async Task<TransactionDetailResponseDTO> UpdateAsync(TransactionUpdateRequestDTO transactionDto)
     {
+        Transaction? transaction = new();
+
         await using (var tm = await _transactionManager.BeginTransactionAsync())
         {
             try
             {
                 // Fetch the account using AccountId from the transaction DTO
-                var account = await _accountRepository.GetByIdAsync(transactionDto.AccountId);
+                var account = await _accountRepository.GetByIdAsync(transactionDto.Id);
                 if (account == null)
                 {
-                    _logger.LogError($"Account with ID {transactionDto.AccountId} not found.");
+                    _logger.LogError($"Account with ID {transactionDto.Id} not found.");
                     throw new ArgumentException("Account not found.");
                 }
 
                 // Fetch the original transaction by TransactionId
-                var originalTransaction = await _transactionRepository.GetByIdAsync(transactionDto.Id);
-                if (originalTransaction == null)
+                transaction = await _transactionRepository.GetByIdAsync(transactionDto.Id);
+                if (transaction == null)
                 {
                     _logger.LogError($"Transaction with ID {transactionDto.Id} not found.");
                     throw new ArgumentException("Transaction not found.");
                 }
 
-                if (originalTransaction.Account.Id != transactionDto.AccountId)
+                if (transaction.Account.Id != transactionDto.Id)
                 {
                     _logger.LogError($"Account ID mismatch for transaction with ID {transactionDto.Id}. Account cannot be changed.");
                     throw new ArgumentException("The account associated with a transaction cannot be changed after creation.");
                 }
 
-                var transactionEntity = transactionDto.Adapt<HouseholdBudget.Domain.Entities.Transaction>();  // Map from TransactionDTO to Transaction
-                decimal originalTransactionAmount = originalTransaction.Type == TransactionType.Credit ? originalTransaction.Amount : -originalTransaction.Amount;
-                decimal newTransactionAmount = transactionEntity.Type == TransactionType.Credit ? transactionEntity.Amount : -transactionEntity.Amount;
+                var updatedTransaction = transactionDto.Adapt<Transaction>();  // Map from TransactionDTO to Transaction
+                decimal originalTransactionAmount = transaction.Type == TransactionType.Credit ? transaction.Amount : -transaction.Amount;
+                decimal newTransactionAmount = updatedTransaction.Type == TransactionType.Credit ? updatedTransaction.Amount : -updatedTransaction.Amount;
 
                 decimal amountOffset = originalTransactionAmount - newTransactionAmount;
 
                 // adjust the properties on the originalTransaction to update
-                originalTransaction.Type = transactionEntity.Type;
-                originalTransaction.Date = transactionEntity.Date;
-                originalTransaction.Amount = transactionEntity.Amount;
-                originalTransaction.Description = transactionEntity.Description;
+                transaction.Type = updatedTransaction.Type;
+                transaction.Date = updatedTransaction.Date;
+                transaction.Amount = updatedTransaction.Amount;
+                transaction.Description = updatedTransaction.Description;
 
                 // Update the account balance inside the transaction scope
-                account = AdjustAccountBalance(account, originalTransaction.Type, amountOffset);
+                account = AdjustAccountBalance(account, transaction.Type, amountOffset);
 
                 // Update the transaction
-                await _transactionRepository.UpdateAsync(originalTransaction);
+                transaction = await _transactionRepository.UpdateAsync(transaction);
                 await _accountRepository.UpdateAsync(account);
 
                 // Commit the transaction
                 await tm.CommitAsync();
 
-                _logger.LogInformation($"Transaction with ID {originalTransaction.Id} updated successfully.");
+                _logger.LogInformation($"Transaction with ID {transaction.Id} updated successfully.");
             }
             catch (Exception ex)
             {
@@ -164,6 +175,8 @@ public class TransactionService : ITransactionService
                 throw new ApplicationException($"{error}: {ex.Message}", ex);
             }
         }
+
+        return transaction.Adapt<TransactionDetailResponseDTO>();  // Automatically map from Transaction to TransactionDTO
     }
 
     public async Task DeleteAsync(int transactionId)
