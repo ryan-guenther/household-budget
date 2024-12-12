@@ -7,6 +7,7 @@ using HouseholdBudget.Service.Interfaces;
 using HouseholdBudget.Infrastructure;
 using DotNetEnv;
 using HouseholdBudget.Mapping;
+using Microsoft.Extensions.Logging.Console;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,6 +50,9 @@ builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 
 // Register Mapster configuration
 builder.Services.AddSingleton(MapsterConfig.Configure());
+
+// Register DbTransactionManager as the implementation of IDbTransactionManager
+builder.Services.AddScoped<IDbTransactionManager, DbTransactionManager>();
 
 // Register services
 builder.Services.AddScoped<IAccountService, AccountService>();
