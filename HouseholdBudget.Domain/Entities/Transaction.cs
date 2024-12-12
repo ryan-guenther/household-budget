@@ -16,12 +16,28 @@ namespace HouseholdBudget.Domain.Entities
         public string Description { get; set; } = string.Empty;  // Description of the transaction
         public TransactionType Type { get; set; }  // Type of transaction (Expense or Credit)
         public int AccountId { get; set; }  // Foreign Key for the related Account
-        public Account Account { get; set; }  // Navigation property to Account
+        public Account Account { get; set; } = new Account();  // Navigation property to Account
 
         // Tracking properties from ITrackable
-        public string CreatedBy { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public string? ModifiedBy { get; set; }
-        public DateTime? ModifiedAt { get; set; }
+        public string CreatedBy { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; } = DateTime.MinValue;
+        public string? ModifiedBy { get; set; } = string.Empty;
+        public DateTime? ModifiedAt { get; set; } = DateTime.MinValue;
+
+        public Transaction()
+        {
+            
+        }
+
+        public Transaction(int id, decimal amount, DateTime date, string description, TransactionType type, Account account)
+        {
+            Id = id;
+            Amount = amount;
+            Date = date;
+            Description = description;
+            Type = type;
+            AccountId = account.Id;
+            Account = account;
+        }
     }
 }

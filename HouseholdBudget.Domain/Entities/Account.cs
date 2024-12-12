@@ -20,11 +20,22 @@ namespace HouseholdBudget.Domain.Entities
         public AccountType Type { get; set; }  // Type of account (Chequing, Savings, etc.)
         public decimal Balance { get; set; }  // Current balance of the account
         public List<Transaction> Transactions { get; set; } = new List<Transaction>();  // Transactions related to the account
-        
+
         // Tracking properties from ITrackable
-        public string CreatedBy { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public string? ModifiedBy { get; set; }
-        public DateTime? ModifiedAt { get; set; }
+        public string CreatedBy { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; } = DateTime.MinValue;
+        public string? ModifiedBy { get; set; } = string.Empty;
+        public DateTime? ModifiedAt { get; set; } = DateTime.MinValue;
+
+
+        public Account() { }
+
+        public Account(int id, string name, AccountType accountType, decimal balance)
+        {
+            Id = id;
+            Name = name;
+            Type = accountType;
+            Balance = balance;
+        }
     }
 }
