@@ -1,9 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using HouseholdBudget.Domain.Entities;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace HouseholdBudget.Infrastructure
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : IdentityDbContext<IdentityUser>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -27,6 +29,31 @@ namespace HouseholdBudget.Infrastructure
             // Fluent API configurations (optional)
             modelBuilder.Entity<Account>();
             modelBuilder.Entity<Transaction>();
+
+            // Seed roles
+            modelBuilder.Entity<IdentityRole>().HasData(Domain.Roles.Predefined.GetAll());
+
+
+            // Seed default admin user
+            var adminUser = new IdentityUser
+            {
+                Id = "1",
+                UserName = "admin@example.com",
+                NormalizedUserName = "ADMIN@EXAMPLE.COM",
+                Email = "admin@example.com",
+                NormalizedEmail = "ADMIN@EXAMPLE.COM",
+                EmailConfirmed = true,
+                PasswordHash = "AQAAAAIAAYagAAAAEH0MHgXb85VobOE8N045dkFU/SISHU9gRMbIoqXMXHQpcH/JNYmnrfl3BFSo16xxew==",
+                ConcurrencyStamp = "b1fd63fe-c93a-41b8-b96e-b6cf5d4fcc46",
+                SecurityStamp = "1f1f3b55-9e3a-4f51-8f42-d0bb0a622562"
+            };
+
+            modelBuilder.Entity<IdentityUser>().HasData(adminUser);
+
+            // Associate admin user with Admin role
+            modelBuilder.Entity<IdentityUserRole<string>>().HasData(
+                new IdentityUserRole<string> { UserId = "1", RoleId = Domain.Roles.Definitions.Admin.Id.ToString() } // Admin User -> Admin Role
+            );
         }
     }
 }
