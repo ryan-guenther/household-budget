@@ -58,7 +58,7 @@ public class AuthenticationService : IAuthenticationService
         // Assign a default role to the user (optional)
         await _userManager.AddToRoleAsync(user, Roles.Definitions.User.Name);
 
-        _logger.LogInformation($"Successful regisration completed for user email {user.Email}.");
+        _logger.LogInformation($"Successful registration completed for user email {user.Email}.");
 
         return "Registration successful.";
     }

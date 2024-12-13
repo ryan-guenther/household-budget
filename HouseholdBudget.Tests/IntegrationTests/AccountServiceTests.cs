@@ -1,11 +1,11 @@
 ﻿using Moq;
 using HouseholdBudget.Service;
 using HouseholdBudget.Domain.Entities;
-using HouseholdBudget.DTO;
 using HouseholdBudget.Repository;
 using Microsoft.Extensions.Logging;
 using HouseholdBudget.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using HouseholdBudget.Infrastructure.Interfaces;
 
 namespace HouseholdBudget.Tests.IntegrationTests
 {
@@ -14,6 +14,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         private readonly ApplicationDbContext _dbContext;
         private readonly Mock<IDbTransactionManager> _mockTransactionManager;
         private readonly AccountService _accountService;
+        private readonly Mock<IEntitySaveInterceptor> _mockSaveInterceptor;
 
         public AccountServiceTests()
         {
@@ -22,8 +23,10 @@ namespace HouseholdBudget.Tests.IntegrationTests
                 .UseInMemoryDatabase(Guid.NewGuid().ToString()) // Unique database for each test run
                 .Options;
 
+            _mockSaveInterceptor = new Mock<IEntitySaveInterceptor>();
+
             // Create an instance of ApplicationDbContext
-            _dbContext = new ApplicationDbContext(options);
+            _dbContext = new ApplicationDbContext(options, _mockSaveInterceptor.Object);
 
             // Setup the mocked DbTransactionManager
             _mockTransactionManager = new Mock<IDbTransactionManager>();

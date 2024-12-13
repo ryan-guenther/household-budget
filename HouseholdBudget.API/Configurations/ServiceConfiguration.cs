@@ -1,6 +1,8 @@
 ﻿using HouseholdBudget.Service;
 using HouseholdBudget.Service.Interfaces;
 using HouseholdBudget.Repository;
+using HouseholdBudget.Infrastructure.Interfaces;
+using HouseholdBudget.Infrastructure;
 
 namespace HouseholdBudget.Configurations
 {
@@ -27,6 +29,12 @@ namespace HouseholdBudget.Configurations
 
             // Transaction Manager
             services.AddScoped<IDbTransactionManager, DbTransactionManager>();
+
+            // HTTP Context Accessor
+            services.AddHttpContextAccessor();
+
+            // Interceptors
+            services.AddScoped<IEntitySaveInterceptor, EntitySaveInterceptor>();
 
             return services;
         }
