@@ -2,19 +2,37 @@
 using HouseholdBudget.Domain.Entities;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http;
+using HouseholdBudget.Infrastructure.Interfaces;
 
 namespace HouseholdBudget.Infrastructure
 {
     public class ApplicationDbContext : IdentityDbContext<IdentityUser>
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        private readonly IEntitySaveInterceptor _entitySaveInterceptor;
+
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options,
+                IEntitySaveInterceptor entitySaveInterceptor)
             : base(options)
         {
+            _entitySaveInterceptor = entitySaveInterceptor;
         }
 
         // Define DbSets for your entities
         public DbSet<Transaction> Transactions { get; set; }
         public DbSet<Account> Accounts { get; set; }
+
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            _entitySaveInterceptor.InterceptSave(ChangeTracker);
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+
+        public override int SaveChanges()
+        {
+            _entitySaveInterceptor.InterceptSave(ChangeTracker);
+            return base.SaveChanges();
+        }
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
