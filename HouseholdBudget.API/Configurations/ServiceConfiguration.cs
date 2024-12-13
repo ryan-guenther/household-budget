@@ -33,6 +33,9 @@ namespace HouseholdBudget.Configurations
             // HTTP Context Accessor
             services.AddHttpContextAccessor();
 
+            // User Context
+            services.AddScoped<IUserContext, UserContext>();
+
             // Interceptors
             services.AddScoped<IEntitySaveInterceptor, EntitySaveInterceptor>();
 

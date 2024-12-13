@@ -1,9 +1,6 @@
-﻿using System.Security.Claims;
-
-using HouseholdBudget.Domain;
+﻿using HouseholdBudget.Domain;
 using HouseholdBudget.Infrastructure.Interfaces;
 
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
@@ -14,11 +11,11 @@ namespace HouseholdBudget.Infrastructure
     /// </summary>
     public class EntitySaveInterceptor : IEntitySaveInterceptor
     {
-        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IUserContext _userContext;
 
-        public EntitySaveInterceptor(IHttpContextAccessor httpContextAccessor)
+        public EntitySaveInterceptor(IUserContext userContext)
         {
-            _httpContextAccessor = httpContextAccessor;
+            _userContext = userContext;
         }
 
         /// <summary>
@@ -27,38 +24,20 @@ namespace HouseholdBudget.Infrastructure
         /// <param name="changeTracker">The change tracker containing tracked entities.</param>
         public void InterceptSave(ChangeTracker changeTracker)
         {
-            var userId = GetNumericNameIdentifier();
+            var userId = _userContext.GetNumericUserId();
 
-            if (!string.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userId))
             {
-                foreach (var entry in changeTracker.Entries<BaseEntity>())
+                throw new InvalidOperationException("Authenticated user ID could not be determined.");
+            }
+
+            foreach (var entry in changeTracker.Entries<BaseEntity>())
+            {
+                if (entry.State == EntityState.Added)
                 {
-                    if (entry.State == EntityState.Added)
-                    {
-                        entry.Entity.OwnerUserId = userId;
-                    }
+                    entry.Entity.OwnerUserId = userId;
                 }
             }
-            else
-            {
-                throw new InvalidOperationException("Problem with save.");
-            }
-        }
-
-        /// <summary>
-        /// Extracts the numeric NameIdentifier claim from the current user's claims.
-        /// </summary>
-        /// <returns>The numeric NameIdentifier as a string, or null if not found.</returns>
-        private string? GetNumericNameIdentifier()
-        {
-            var claims = _httpContextAccessor.HttpContext?.User?.Claims;
-
-            if (claims == null) return null;
-
-            return claims
-                .Where(c => c.Type == ClaimTypes.NameIdentifier && int.TryParse(c.Value, out _))
-                .Select(c => c.Value)
-                .FirstOrDefault();
         }
     }
 }
