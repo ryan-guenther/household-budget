@@ -23,6 +23,7 @@ namespace HouseholdBudget.Configurations
             // Services
             services.AddScoped<IAccountService, AccountService>();
             services.AddScoped<ITransactionService, TransactionService>();
+            services.AddScoped<IAuthenticationService, AuthenticationService>();
 
             // Transaction Manager
             services.AddScoped<IDbTransactionManager, DbTransactionManager>();

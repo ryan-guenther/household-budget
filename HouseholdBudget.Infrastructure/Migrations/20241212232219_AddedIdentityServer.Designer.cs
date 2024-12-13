@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HouseholdBudget.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20241212213202_AddedIdentityServer")]
+    [Migration("20241212232219_AddedIdentityServer")]
     partial class AddedIdentityServer
     {
         /// <inheritdoc />

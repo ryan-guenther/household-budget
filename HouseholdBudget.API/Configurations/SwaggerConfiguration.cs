@@ -23,7 +23,7 @@ namespace HouseholdBudget.Configurations
                     Scheme = "Bearer",
                     BearerFormat = "JWT",
                     In = ParameterLocation.Header,
-                    Description = "Enter 'Bearer' [space] and your valid token."
+                    Description = "Enter your valid token."
                 });
 
                 options.AddSecurityRequirement(new OpenApiSecurityRequirement

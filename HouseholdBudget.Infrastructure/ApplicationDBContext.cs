@@ -31,10 +31,8 @@ namespace HouseholdBudget.Infrastructure
             modelBuilder.Entity<Transaction>();
 
             // Seed roles
-            modelBuilder.Entity<IdentityRole>().HasData(
-                new IdentityRole { Id = "1", Name = "Admin", NormalizedName = "ADMIN" },
-                new IdentityRole { Id = "2", Name = "User", NormalizedName = "USER" }
-            );
+            modelBuilder.Entity<IdentityRole>().HasData(Domain.Roles.Predefined.GetAll());
+
 
             // Seed default admin user
             var adminUser = new IdentityUser
@@ -54,7 +52,7 @@ namespace HouseholdBudget.Infrastructure
 
             // Associate admin user with Admin role
             modelBuilder.Entity<IdentityUserRole<string>>().HasData(
-                new IdentityUserRole<string> { UserId = "1", RoleId = "1" } // Admin User -> Admin Role
+                new IdentityUserRole<string> { UserId = "1", RoleId = Domain.Roles.Definitions.Admin.Id.ToString() } // Admin User -> Admin Role
             );
         }
     }
