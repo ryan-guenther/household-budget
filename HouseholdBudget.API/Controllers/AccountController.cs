@@ -1,6 +1,7 @@
 ﻿using HouseholdBudget.Service.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using HouseholdBudget.DTO.Account;
+using Microsoft.AspNetCore.Authorization;
 
 namespace HouseholdBudget.API.Controllers
 {
@@ -22,10 +23,29 @@ namespace HouseholdBudget.API.Controllers
             return Ok(accountList);  // Returns AccountDTOs
         }
 
+        [HttpGet]
+        [Route("admin")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<IEnumerable<AccountListResponseDTO>>> AdminGetAll()
+        {
+            var accountList = await _accountService.AdminGetAllAsync();
+            return Ok(accountList);  // Returns AccountDTOs
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<IEnumerable<AccountDetailResponseDTO>>> GetById(int id)
         {
             var account = await _accountService.GetByIdAsync(id);
+            if (account == null) return NotFound();
+
+            return Ok(account);  // Returns AccountDTO
+        }
+
+        [HttpGet("admin/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<IEnumerable<AccountDetailResponseDTO>>> AdminGetById(int id)
+        {
+            var account = await _accountService.AdminGetByIdAsync(id);
             if (account == null) return NotFound();
 
             return Ok(account);  // Returns AccountDTO
