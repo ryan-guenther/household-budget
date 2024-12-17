@@ -1,9 +1,13 @@
 ﻿using System.Security.Claims;
 
+using HouseholdBudget.Domain;
 using HouseholdBudget.Domain.Interfaces;
 using HouseholdBudget.Infrastructure.Interfaces;
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+
+using static HouseholdBudget.Domain.Roles;
 
 namespace HouseholdBudget.Infrastructure
 {
@@ -36,7 +40,23 @@ namespace HouseholdBudget.Infrastructure
         public bool IsAdmin()
         {
             var claimsPrincipal = _httpContextAccessor.HttpContext?.User;
-            return claimsPrincipal?.IsInRole("Admin") ?? false;
+            return claimsPrincipal?.IsInRole(Roles.Definitions.Admin.Name) ?? false;
+        }
+
+        /// <inheritdoc />
+        public bool HasRole(RoleDefinition role)
+        {
+            return _httpContextAccessor.HttpContext?.User?.IsInRole(role.Name) ?? false;
+        }
+
+        /// <inheritdoc />
+        public void DemandRole(RoleDefinition role)
+        {
+            if (!HasRole(role))
+            {
+                throw new UnauthorizedAccessException($"User does not have the required role: {role}");
+
+            }
         }
     }
 }
