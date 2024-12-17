@@ -1,6 +1,5 @@
 ﻿using Moq;
 using HouseholdBudget.Domain.Entities;
-using HouseholdBudget.DTO;
 using HouseholdBudget.Repository;
 using HouseholdBudget.Infrastructure;
 using Microsoft.Extensions.Logging;
@@ -15,6 +14,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         private readonly Mock<IDbTransactionManager> _mockTransactionManager;
         private readonly TransactionService _transactionService;
         private readonly Mock<IEntitySaveInterceptor> _mockSaveInterceptor;
+        private readonly Mock<IUserContext> _mockUserContext;
 
         public TransactionServiceTests()
         {
@@ -38,12 +38,15 @@ namespace HouseholdBudget.Tests.IntegrationTests
             _mockTransactionManager.Setup(tm => tm.CommitAsync()).Verifiable();
             _mockTransactionManager.Setup(tm => tm.RollbackAsync()).Verifiable();
 
+            _mockUserContext = new Mock<IUserContext>();
+
             // Initialize TransactionService with the real repositories and mocked transaction manager
             _transactionService = new TransactionService(
                 _mockTransactionManager.Object,
-                new TransactionRepository(_dbContext),
-                new AccountRepository(_dbContext),
-                Mock.Of<ILogger<TransactionService>>() // Mocked logger
+                new TransactionRepository(_dbContext, _mockUserContext.Object),
+                new AccountRepository(_dbContext, _mockUserContext.Object),
+                Mock.Of<ILogger<TransactionService>>(), // Mocked logger
+                _mockUserContext.Object
             );
 
             // Seed the database with initial data
@@ -72,11 +75,42 @@ namespace HouseholdBudget.Tests.IntegrationTests
 
         int _seedNextAvailableTransactionId;
 
+        const string adminOwnerUserId = "1";
+
         private void SeedDatabase()
         {
-            var account = new Account(seedAccountId, seedAccountName, seedAccountType, seedAccountBalance);
-            var creditTransaction = new Transaction(seedCreditTransactionId, seedCreditTransactionAmount, seedCreditTransactionDate, seedCreditTransactionDescription, seedCreditTransactionType, account);
-            var debitTransaction = new Transaction(seedDebitTransactionId, seedDebitTransactionAmount, seedDebitTransactionDate, seedDebitTransactionDescription, seedDebitTransactionType, account);
+            var account = new Account
+            {
+                Id = seedAccountId,
+                Balance = seedAccountBalance,
+                Type = seedAccountType,
+                OwnerUserId = adminOwnerUserId
+            };
+
+            var creditTransaction = new Transaction
+            {
+                Id = seedCreditTransactionId,
+                Amount = seedCreditTransactionAmount,
+                Date = seedCreditTransactionDate,
+                Description = seedCreditTransactionDescription,
+                Type = seedCreditTransactionType,
+                Account = account,
+                AccountId = account.Id,
+                OwnerUserId =
+                adminOwnerUserId
+            };
+
+            var debitTransaction = new Transaction
+            {
+                Id = seedDebitTransactionId,
+                Amount = seedDebitTransactionAmount,
+                Date = seedDebitTransactionDate,
+                Description = seedDebitTransactionDescription,
+                Type = seedDebitTransactionType,
+                Account = account,
+                AccountId = account.Id,
+                OwnerUserId = adminOwnerUserId
+            };
 
             _dbContext.Accounts.Add(account);
             _dbContext.Transactions.Add(creditTransaction);
@@ -93,13 +127,14 @@ namespace HouseholdBudget.Tests.IntegrationTests
 
         /// <summary>
         /// Test will add an additional Debit Transaction to the Seeded Account
-        /// Confirms the Transaction Saves Succesfully
+        /// Confirms the Transaction Saves Successfully
         /// Ensures the Account Balance is Updated for the Expense
         /// </summary>
         [Fact]
         public async Task AddTransaction_ShouldBeginAndCommitTransaction()
         {
             // Arrange
+            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns(adminOwnerUserId);
             int transactionId = _seedNextAvailableTransactionId;
             decimal transactionAmount = 200;
             var transactionDto = new DTO.Transaction.TransactionCreateRequestDTO { Id = transactionId, Amount = transactionAmount, Type = "Expense", AccountId = seedAccountId };
@@ -145,9 +180,9 @@ namespace HouseholdBudget.Tests.IntegrationTests
         }
 
         /// <summary>
-        /// Test will attempt to update a seeded transaciton
+        /// Test will attempt to update a seeded transaction
         /// Switches the Transaction from a Credit to a Expense and changes the Value
-        /// Ensure the Update is Succesful to the Transaction
+        /// Ensure the Update is Successful to the Transaction
         /// Ensures the Account Balance is updated correctly
         /// </summary>
         /// <returns></returns>
@@ -155,6 +190,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task UpdateTransaction_ShouldUpdateAndCommitTransaction()
         {
             // Arrange
+            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns(adminOwnerUserId);
             int transactionId = seedCreditTransactionId;
             decimal transactionAmount = 150;
             var transactionType = TransactionType.Expense;
@@ -182,12 +218,13 @@ namespace HouseholdBudget.Tests.IntegrationTests
         /// <summary>
         /// Deletes the Debit Transaction from the Database
         /// Ensures the Transaction is Deleted
-        /// Ensures the Account Balance is Updated Succesfully
+        /// Ensures the Account Balance is Updated Successfully
         /// </summary>
         [Fact]
         public async Task DeleteTransaction_ShouldDeleteAndCommitTransaction()
         {
             // Arrange
+            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns(adminOwnerUserId);
             var transactionIdToDelete = seedDebitTransactionId;
             var adjustedAccountBalance = seedAccountBalance + seedDebitTransactionAmount;
 
@@ -217,10 +254,11 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task GetAllTransactions_ShouldReturnTransactions()
         {
             // Arrange
+            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns(adminOwnerUserId);
             var transactions = new List<Transaction>
             {
-                new Transaction { Id = _seedNextAvailableTransactionId, Amount = 100, Type = TransactionType.Credit, AccountId = seedAccountId },
-                new Transaction { Id = _seedNextAvailableTransactionId + 1, Amount = 200, Type = TransactionType.Expense, AccountId = seedAccountId }
+                new Transaction { Id = _seedNextAvailableTransactionId, Amount = 100, Type = TransactionType.Credit, AccountId = seedAccountId, OwnerUserId = adminOwnerUserId },
+                new Transaction { Id = _seedNextAvailableTransactionId + 1, Amount = 200, Type = TransactionType.Expense, AccountId = seedAccountId, OwnerUserId = adminOwnerUserId }
             };
             var expectedTransactionCount = transactions.Count() + (_seedNextAvailableTransactionId - 1);
             _dbContext.Transactions.AddRange(transactions);
@@ -242,7 +280,8 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task GetTransactionById_ShouldReturnTransaction_WhenExists()
         {
             // Arrange
-            var transaction = new Transaction { Id = _seedNextAvailableTransactionId, Amount = 100, Type = TransactionType.Credit, AccountId = seedAccountId };
+            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns(adminOwnerUserId);
+            var transaction = new Transaction { Id = _seedNextAvailableTransactionId, Amount = 100, Type = TransactionType.Credit, AccountId = seedAccountId, OwnerUserId = adminOwnerUserId };
             _dbContext.Transactions.Add(transaction);
             _dbContext.SaveChanges();
 
