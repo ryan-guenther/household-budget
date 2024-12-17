@@ -33,10 +33,13 @@ namespace HouseholdBudget.Service
         public async Task<IEnumerable<AccountListResponseDTO>> GetAllAsync()
         {
             IEnumerable<Account> accounts;
+            var userId = _userContext.GetNumericUserId();
 
             try
             {
-                accounts = await _accountRepository.GetAll().ToListAsync();
+                accounts = await _accountRepository.GetAll()
+                    .Where(a => a.OwnerUserId == userId) // Filter by user ID
+                    .ToListAsync();
             }
             catch (Exception ex)
             {
@@ -55,7 +58,7 @@ namespace HouseholdBudget.Service
 
             try
             {
-                accounts = await _accountRepository.AdminGetAll().ToListAsync();
+                accounts = await _accountRepository.GetAll().ToListAsync();
             }
             catch (Exception ex)
             {
@@ -70,14 +73,24 @@ namespace HouseholdBudget.Service
         public async Task<AccountDetailResponseDTO?> GetByIdAsync(int accountId)
         {
             Account? account;
+            var userId = _userContext.GetNumericUserId();
+            var isAdmin = _userContext.IsAdmin();
 
             try
             {
                 account = await _accountRepository.GetByIdAsync(accountId);
+
                 if (account == null)
                 {
                     _logger.LogWarning($"Account with ID {accountId} was not found.");
                     return null;  // Account not found
+                }
+
+                // Enforce ownership check
+                if (!isAdmin && account.OwnerUserId != userId)
+                {
+                    _logger.LogWarning($"Account with ID {accountId} not found for user {userId}.");
+                    return null;
                 }
             }
             catch (Exception ex)
@@ -97,7 +110,7 @@ namespace HouseholdBudget.Service
 
             try
             {
-                account = await _accountRepository.AdminGetByIdAsync(accountId);
+                account = await _accountRepository.GetByIdAsync(accountId);
                 if (account == null)
                 {
                     _logger.LogWarning($"Account with ID {accountId} was not found.");
@@ -153,20 +166,19 @@ namespace HouseholdBudget.Service
             {
                 try
                 {
-                    // Fetch the account using AccountId
-                    if (isAdmin)
-                    {
-                        account = await _accountRepository.AdminGetByIdAsync(accountId);
-                    }
-                    else
-                    {
-                        account = await _accountRepository.GetByIdAsync(accountId);
-                    }
-
+                    // Fetch the account
+                    account = await _accountRepository.GetByIdAsync(accountId);
                     if (account == null)
                     {
                         _logger.LogError($"Account with ID {accountId} not found.");
                         throw new ArgumentException("Account not found.");
+                    }
+
+                    // Enforce ownership or admin access
+                    if (!isAdmin && account.OwnerUserId != userId)
+                    {
+                        _logger.LogWarning($"User {userId} attempted to update account {accountId} without ownership.");
+                        throw new UnauthorizedAccessException("You do not have permission to update this account.");
                     }
 
                     var updatedAccount = accountDto.Adapt<Account>();  // Automatically map from AccountUpdateRequestDTO to Account
@@ -205,15 +217,19 @@ namespace HouseholdBudget.Service
             {
                 try
                 {
-                    Account? account;
-
-                    if (isAdmin)
+                    // Fetch the account
+                    var account = await _accountRepository.GetByIdAsync(accountId);
+                    if (account == null)
                     {
-                        account = await _accountRepository.AdminGetByIdAsync(accountId);
+                        _logger.LogError($"Account with ID {accountId} not found.");
+                        throw new ArgumentException("Account not found.");
                     }
-                    else
+
+                    // Enforce ownership or admin access
+                    if (!isAdmin && account.OwnerUserId != userId)
                     {
-                        account = await _accountRepository.GetByIdAsync(accountId);
+                        _logger.LogWarning($"User {userId} attempted to update account {accountId} without ownership.");
+                        throw new UnauthorizedAccessException("You do not have permission to update this account.");
                     }
 
                     if (account == null)

@@ -43,8 +43,8 @@ namespace HouseholdBudget.Tests.IntegrationTests
             // Initialize TransactionService with the real repositories and mocked transaction manager
             _transactionService = new TransactionService(
                 _mockTransactionManager.Object,
-                new TransactionRepository(_dbContext, _mockUserContext.Object),
-                new AccountRepository(_dbContext, _mockUserContext.Object),
+                new TransactionRepository(_dbContext),
+                new AccountRepository(_dbContext),
                 Mock.Of<ILogger<TransactionService>>(), // Mocked logger
                 _mockUserContext.Object
             );

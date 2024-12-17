@@ -1,7 +1,5 @@
 ﻿using HouseholdBudget.Domain.Entities;
 using HouseholdBudget.Infrastructure;
-using HouseholdBudget.Infrastructure.Interfaces;
-
 using Microsoft.EntityFrameworkCore;
 
 namespace HouseholdBudget.Repository
@@ -9,49 +7,22 @@ namespace HouseholdBudget.Repository
     public class AccountRepository : IAccountRepository
     {
         private readonly ApplicationDbContext _dbContext;
-        private readonly IUserContext _userContext;
 
-        public AccountRepository(ApplicationDbContext dbContext,
-            IUserContext userContext)
+        public AccountRepository(ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
-            _userContext = userContext;
         }
 
         public IQueryable<Account> GetAll()
         {
-            var userId = _userContext.GetNumericUserId();
-            var accounts = _dbContext.Accounts.Where(t => t.OwnerUserId == userId);
-
-            return accounts;
-        }
-
-        public IQueryable<Account> AdminGetAll()
-        {
-            var accounts = _dbContext.Accounts;
-
-            return accounts;
+            return _dbContext.Accounts.AsQueryable();
         }
 
         public async Task<Account?> GetByIdAsync(int id)
         {
-            var userId = _userContext.GetNumericUserId();
-            var account = await _dbContext.Accounts
-                .Where(t => t.Id == id
-                    && t.OwnerUserId == userId)
+            return await _dbContext.Accounts
+                .Where(a => a.Id == id)
                 .FirstOrDefaultAsync();
-
-            return account;
-        }
-
-        public async Task<Account?> AdminGetByIdAsync(int id)
-        {
-            var userId = _userContext.GetNumericUserId();
-            var account = await _dbContext.Accounts
-                .Where(t => t.Id == id)
-                .FirstOrDefaultAsync();
-
-            return account;
         }
 
         public async Task<Account> AddAsync(Account account)
