@@ -1,5 +1,6 @@
 ﻿using HouseholdBudget.Domain.Entities;
 using HouseholdBudget.Infrastructure;
+using HouseholdBudget.Infrastructure.Interfaces;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -7,44 +8,73 @@ namespace HouseholdBudget.Repository
 {
     public class TransactionRepository : ITransactionRepository
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext _dbContext;
+        private readonly IUserContext _userContext;
 
-        public TransactionRepository(ApplicationDbContext context)
+        public TransactionRepository(ApplicationDbContext dbContext,
+            IUserContext userContext)
         {
-            _context = context;
+            _dbContext = dbContext;
+            _userContext = userContext;
         }
 
-        public async Task<IEnumerable<Transaction>> GetAllAsync()
+        public IQueryable<Transaction> GetAll()
         {
-            return await _context.Transactions.Include(t => t.Account).ToListAsync();  // Include related Account data
+            var userId = _userContext.GetNumericUserId();
+            var transactions = _dbContext.Transactions.Where(t => t.OwnerUserId == userId);
+
+            return transactions;
+        }
+
+        public IQueryable<Transaction> AdminGetAll()
+        {
+            var transactions = _dbContext.Transactions;
+
+            return transactions;
         }
 
         public async Task<Transaction?> GetByIdAsync(int id)
         {
-            return await _context.Transactions.Include(t => t.Account).FirstOrDefaultAsync(t => t.Id == id);
+            var userId = _userContext.GetNumericUserId();
+            var transaction = await _dbContext.Transactions
+                .Where(t => t.Id == id
+                    && t.OwnerUserId == userId)
+                .FirstOrDefaultAsync();
+
+            return transaction;
+        }
+
+        public async Task<Transaction?> AdminGetByIdAsync(int id)
+        {
+            var userId = _userContext.GetNumericUserId();
+            var transaction = await _dbContext.Transactions
+                .Where(t => t.Id == id)
+                .FirstOrDefaultAsync();
+
+            return transaction;
         }
 
         public async Task<Transaction> AddAsync(Transaction transaction)
         {
-            await _context.Transactions.AddAsync(transaction);
-            await _context.SaveChangesAsync();
+            await _dbContext.Transactions.AddAsync(transaction);
+            await _dbContext.SaveChangesAsync();
             return transaction;
         }
 
         public async Task<Transaction> UpdateAsync(Transaction transaction)
         {
-            _context.Transactions.Update(transaction);
-            await _context.SaveChangesAsync();
+            _dbContext.Transactions.Update(transaction);
+            await _dbContext.SaveChangesAsync();
             return transaction;
         }
 
         public async Task DeleteAsync(int id)
         {
-            var transaction = await _context.Transactions.FindAsync(id);
+            var transaction = await _dbContext.Transactions.FindAsync(id);
             if (transaction != null)
             {
-                _context.Transactions.Remove(transaction);
-                await _context.SaveChangesAsync();
+                _dbContext.Transactions.Remove(transaction);
+                await _dbContext.SaveChangesAsync();
             }
         }
     }
