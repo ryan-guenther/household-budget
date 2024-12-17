@@ -5,6 +5,9 @@ using HouseholdBudget.Service.Interfaces;
 using Mapster;
 using Microsoft.Extensions.Logging;
 using HouseholdBudget.BusinessLogic;
+using HouseholdBudget.Infrastructure.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using HouseholdBudget.Domain;
 
 public class TransactionService : ITransactionService
 {
@@ -12,17 +15,20 @@ public class TransactionService : ITransactionService
     private readonly ITransactionRepository _transactionRepository;
     private readonly IAccountRepository _accountRepository;
     private readonly ILogger<TransactionService> _logger;
+    private readonly IUserContext _userContext;
 
     public TransactionService(
         IDbTransactionManager transactionManager,
         ITransactionRepository transactionRepository,
         IAccountRepository accountRepository,
-        ILogger<TransactionService> logger)
+        ILogger<TransactionService> logger,
+        IUserContext userContext)
     {
         _transactionManager = transactionManager;
         _transactionRepository = transactionRepository;
         _accountRepository = accountRepository;
         _logger = logger;
+        _userContext = userContext;
     }
 
     public async Task<IEnumerable<TransactionListResponseDTO>> GetAllAsync()
@@ -31,7 +37,26 @@ public class TransactionService : ITransactionService
 
         try
         {
-            transactions = await _transactionRepository.GetAllAsync();
+            transactions = await _transactionRepository.GetAll().ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            string error = "An error occurred while retrieving all transactions";
+            _logger.LogError(error, ex);
+            throw new ApplicationException($"{error}: {ex.Message}", ex);
+        }
+
+        return transactions.Adapt<IEnumerable<TransactionListResponseDTO>>();  // Automatically map from Transaction to TransactionDTO
+    }
+
+    public async Task<IEnumerable<TransactionListResponseDTO>> AdminGetAllAsync()
+    {
+        _userContext.DemandRole(Roles.Definitions.Admin);
+        IEnumerable<Transaction> transactions;
+
+        try
+        {
+            transactions = await _transactionRepository.AdminGetAll().ToListAsync();
         }
         catch (Exception ex)
         {
@@ -61,18 +86,50 @@ public class TransactionService : ITransactionService
         return transaction?.Adapt<TransactionDetailResponseDTO>();  // Automatically map from Transaction to TransactionDTO
     }
 
+    public async Task<TransactionDetailResponseDTO?> AdminGetByIdAsync(int transactionId)
+    {
+        _userContext.DemandRole(Roles.Definitions.Admin);
+        Transaction? transaction;
+
+        try
+        {
+            transaction = await _transactionRepository.AdminGetByIdAsync(transactionId);
+        }
+        catch (Exception ex)
+        {
+            string error = $"An error occurred while retrieving the transaction with ID {transactionId}";
+            _logger.LogError(error, ex);
+            throw new ApplicationException($"{error}: {ex.Message}", ex);
+        }
+
+        return transaction?.Adapt<TransactionDetailResponseDTO>();  // Automatically map from Transaction to TransactionDTO
+    }
+
     public async Task<TransactionDetailResponseDTO> AddAsync(TransactionCreateRequestDTO transactionDto)
     {   
         Transaction transaction = new();
+        var accountId = transactionDto.AccountId;
+        var userId = _userContext.GetNumericUserId();
+        var isAdmin = _userContext.IsAdmin();
 
         await using (var tm = await _transactionManager.BeginTransactionAsync())
         {
             try
             {
-                var account = await _accountRepository.GetByIdAsync(transactionDto.AccountId);
+                Account? account;
+
+                if(isAdmin)
+                {
+                    account = await _accountRepository.AdminGetByIdAsync(accountId);
+                }
+                else
+                {
+                    account = await _accountRepository.GetByIdAsync(accountId);
+                }
+
                 if (account == null)
                 {
-                    _logger.LogError($"Account with ID {transactionDto.AccountId} not found.");
+                    _logger.LogError($"Account with ID {accountId} not found.");
                     throw new ArgumentException("Account not found.");
                 }
 
@@ -101,30 +158,53 @@ public class TransactionService : ITransactionService
     public async Task<TransactionDetailResponseDTO> UpdateAsync(TransactionUpdateRequestDTO transactionDto)
     {
         Transaction? transaction = new();
+        var transactionId = transactionDto.Id;
+        var userId = _userContext.GetNumericUserId();
+        var isAdmin = _userContext.IsAdmin();
 
         await using (var tm = await _transactionManager.BeginTransactionAsync())
         {
             try
             {
-                // Fetch the account using AccountId from the transaction DTO
-                var account = await _accountRepository.GetByIdAsync(transactionDto.Id);
-                if (account == null)
-                {
-                    _logger.LogError($"Account with ID {transactionDto.Id} not found.");
-                    throw new ArgumentException("Account not found.");
-                }
-
                 // Fetch the original transaction by TransactionId
-                transaction = await _transactionRepository.GetByIdAsync(transactionDto.Id);
+                if (isAdmin)
+                {
+                    transaction = await _transactionRepository.AdminGetByIdAsync(transactionId);
+                }
+                else
+                {
+                    transaction = await _transactionRepository.GetByIdAsync(transactionId);
+                }
+                
                 if (transaction == null)
                 {
-                    _logger.LogError($"Transaction with ID {transactionDto.Id} not found.");
+                    _logger.LogError($"Transaction with ID {transactionId} not found.");
                     throw new ArgumentException("Transaction not found.");
                 }
 
-                if (transaction.Account.Id != transactionDto.Id)
+                var accountId = transaction.AccountId;
+
+                // Fetch the account using AccountId
+                Account? account;
+
+                if (isAdmin)
                 {
-                    _logger.LogError($"Account ID mismatch for transaction with ID {transactionDto.Id}. Account cannot be changed.");
+                    account = await _accountRepository.AdminGetByIdAsync(accountId);
+                }
+                else
+                {
+                    account = await _accountRepository.GetByIdAsync(accountId);
+                }
+
+                if (account == null)
+                {
+                    _logger.LogError($"Account with ID {accountId} not found.");
+                    throw new ArgumentException("Account not found.");
+                }
+
+                if (transaction.Account.Id != accountId)
+                {
+                    _logger.LogError($"Account ID mismatch for transaction with ID {accountId}. Account cannot be changed.");
                     throw new ArgumentException("The account associated with a transaction cannot be changed after creation.");
                 }
 
@@ -150,11 +230,11 @@ public class TransactionService : ITransactionService
                 // Commit the transaction
                 await tm.CommitAsync();
 
-                _logger.LogInformation($"Transaction with ID {transaction.Id} updated successfully.");
+                _logger.LogInformation($"Transaction with ID {transactionId} updated successfully.");
             }
             catch (Exception ex)
             {
-                string error = $"An error occurred while updating transaction with ID {transactionDto.Id}.";
+                string error = $"An error occurred while updating transaction with ID {transactionId}.";
                 _logger.LogError(error, ex);
                 await tm.RollbackAsync();
                 throw new ApplicationException($"{error}: {ex.Message}", ex);
@@ -166,24 +246,49 @@ public class TransactionService : ITransactionService
 
     public async Task DeleteAsync(int transactionId)
     {
+        var userId = _userContext.GetNumericUserId();
+        var isAdmin = _userContext.IsAdmin();
+
         await using (var tm = await _transactionManager.BeginTransactionAsync())
         {
             try
             {
                 // Fetch the transaction to be deleted by its ID
-                var transactionToDelete = await _transactionRepository.GetByIdAsync(transactionId);
+                Transaction? transactionToDelete;
+
+                if (isAdmin)
+                {
+                    transactionToDelete = await _transactionRepository.AdminGetByIdAsync(transactionId);
+                }
+                else
+                {
+                    transactionToDelete = await _transactionRepository.GetByIdAsync(transactionId);
+                }
+
                 if (transactionToDelete == null)
                 {
                     _logger.LogError($"Transaction with ID {transactionId} not found.");
                     throw new ArgumentException("Transaction not found.");
                 }
 
+                var accountId = transactionToDelete.AccountId;
+
                 // Fetch the associated account for the transaction
-                var account = await _accountRepository.GetByIdAsync(transactionToDelete.AccountId);
+                Account? account;
+
+                if (isAdmin)
+                {
+                    account = await _accountRepository.AdminGetByIdAsync(accountId);
+                }
+                else
+                {
+                    account = await _accountRepository.GetByIdAsync(accountId);
+                }
+
                 if (account == null)
                 {
-                    _logger.LogError($"Account with ID {transactionToDelete.AccountId} associated with transaction ID {transactionId} not found.");
-                    throw new ArgumentException("Account associated with the transaction not found.");
+                    _logger.LogError($"Account with ID {accountId} not found.");
+                    throw new ArgumentException("Account not found.");
                 }
 
                 // Adjust the account balance based on the transaction type
