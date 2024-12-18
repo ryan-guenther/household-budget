@@ -11,7 +11,7 @@ namespace HouseholdBudget.Infrastructure.Interfaces
         /// Retrieves the numeric user ID from the current user's context.
         /// </summary>
         /// <returns>The numeric user ID as a string, or null if not available.</returns>
-        string? GetNumericUserId();
+        string? GetGuidUserId();
 
         /// <summary>
         /// Determines if the current user has admin privileges.

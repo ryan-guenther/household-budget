@@ -1,11 +1,8 @@
 ﻿using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-
+using System.Collections.Generic;
 using HouseholdBudget.BusinessLogic;
-
-using Microsoft.AspNetCore.Identity;
-
 using Xunit;
 
 namespace HouseholdBudget.Tests.UnitTests;
@@ -18,18 +15,18 @@ public class AuthenticationBLTests
     private const string ValidJwtAudience = "TestAudience";
     private const int ValidExpiryMinutes = 30;
 
-    private readonly IdentityUser _testUser = new IdentityUser
-    {
-        Id = "1",
-        Email = "testuser@example.com"
-    };
+    private readonly string _testUserId = "1";
+    private readonly string _testUserEmail = "testuser@example.com";
+    private readonly List<string> _testUserRoles = new List<string> { "Admin", "User" };
 
     [Fact]
     public void GenerateJwtToken_ShouldReturnValidToken_WhenInputIsValid()
     {
         // Act
         var token = AuthenticationBL.GenerateJwtToken(
-            _testUser,
+            _testUserId,
+            _testUserEmail,
+            _testUserRoles,
             ValidJwtKey,
             ValidJwtIssuer,
             ValidJwtAudience,
@@ -43,9 +40,11 @@ public class AuthenticationBLTests
 
         Assert.Equal(ValidJwtIssuer, jwtToken.Issuer);
         Assert.Equal(ValidJwtAudience, jwtToken.Audiences.First());
-        Assert.Contains(jwtToken.Claims, claim => claim.Type == ClaimTypes.Email && claim.Value == _testUser.Email);
-        Assert.Contains(jwtToken.Claims, claim => claim.Type == ClaimTypes.NameIdentifier && claim.Value == _testUser.Id);
+        Assert.Contains(jwtToken.Claims, claim => claim.Type == ClaimTypes.Email && claim.Value == _testUserEmail);
+        Assert.Contains(jwtToken.Claims, claim => claim.Type == ClaimTypes.NameIdentifier && claim.Value == _testUserId);
         Assert.Contains(jwtToken.Claims, claim => claim.Type == JwtRegisteredClaimNames.Jti);
+        Assert.Contains(jwtToken.Claims, claim => claim.Type == ClaimTypes.Role && claim.Value == "Admin");
+        Assert.Contains(jwtToken.Claims, claim => claim.Type == ClaimTypes.Role && claim.Value == "User");
     }
 
     [Fact]
@@ -54,7 +53,9 @@ public class AuthenticationBLTests
         // Act & Assert
         var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
             AuthenticationBL.GenerateJwtToken(
-                _testUser,
+                _testUserId,
+                _testUserEmail,
+                _testUserRoles,
                 ShortJwtKey,
                 ValidJwtIssuer,
                 ValidJwtAudience,
@@ -75,7 +76,7 @@ public class AuthenticationBLTests
     {
         // Act & Assert
         var exception = Assert.Throws<InvalidOperationException>(() =>
-            AuthenticationBL.GenerateJwtToken(_testUser, jwtKey, jwtIssuer, jwtAudience, ValidExpiryMinutes));
+            AuthenticationBL.GenerateJwtToken(_testUserId, _testUserEmail, _testUserRoles, jwtKey, jwtIssuer, jwtAudience, ValidExpiryMinutes));
 
         Assert.Equal(expectedMessage, exception.Message);
     }
@@ -88,7 +89,9 @@ public class AuthenticationBLTests
 
         // Act
         var token = AuthenticationBL.GenerateJwtToken(
-            _testUser,
+            _testUserId,
+            _testUserEmail,
+            _testUserRoles,
             ValidJwtKey,
             ValidJwtIssuer,
             ValidJwtAudience,

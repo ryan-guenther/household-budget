@@ -14,7 +14,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         {
             // Arrange
             var mockUserContext = new Mock<IUserContext>();
-            mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns("123");
+            mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns("123");
 
             var interceptor = new EntitySaveInterceptor(mockUserContext.Object);
 
@@ -41,7 +41,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         {
             // Arrange
             var mockUserContext = new Mock<IUserContext>();
-            mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns((string?)null);
+            mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns((string?)null);
 
             var interceptor = new EntitySaveInterceptor(mockUserContext.Object);
 

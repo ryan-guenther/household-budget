@@ -54,7 +54,7 @@ public class TransactionService : ITransactionService
     {
         _userContext.DemandRole(Roles.Definitions.Admin);
         IEnumerable<Transaction> transactions;
-        var userId = _userContext.GetNumericUserId();
+        var userId = _userContext.GetGuidUserId();
 
         try
         {
@@ -75,7 +75,7 @@ public class TransactionService : ITransactionService
     public async Task<TransactionDetailResponseDTO?> GetByIdAsync(int transactionId)
     {
         Transaction? transaction;
-        var userId = _userContext.GetNumericUserId();
+        var userId = _userContext.GetGuidUserId();
         var isAdmin = _userContext.IsAdmin();
 
         try
@@ -134,7 +134,7 @@ public class TransactionService : ITransactionService
     {   
         Transaction transaction = new();
         var accountId = transactionDto.AccountId;
-        var userId = _userContext.GetNumericUserId();
+        var userId = _userContext.GetGuidUserId();
         var isAdmin = _userContext.IsAdmin();
 
         await using (var tm = await _transactionManager.BeginTransactionAsync())
@@ -183,7 +183,7 @@ public class TransactionService : ITransactionService
     {
         Transaction? transaction = new();
         var transactionId = transactionDto.Id;
-        var userId = _userContext.GetNumericUserId();
+        var userId = _userContext.GetGuidUserId();
         var isAdmin = _userContext.IsAdmin();
 
         await using (var tm = await _transactionManager.BeginTransactionAsync())
@@ -268,7 +268,7 @@ public class TransactionService : ITransactionService
 
     public async Task DeleteAsync(int transactionId)
     {
-        var userId = _userContext.GetNumericUserId();
+        var userId = _userContext.GetGuidUserId();
         var isAdmin = _userContext.IsAdmin();
 
         await using (var tm = await _transactionManager.BeginTransactionAsync())

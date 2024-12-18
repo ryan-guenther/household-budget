@@ -128,7 +128,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task UpdateAccount_ShouldUpdateAndCommitTransaction()
         {
             // Arrange
-            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns($"{seedAccountId}");
+            _mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns($"{seedAccountId}");
             int accountId = seedAccountId;
             decimal accountBalance = (decimal)375.12;
             string accountName = "New account name.";
@@ -154,7 +154,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task DeleteAccount_ShouldDeleteAndCommitTransaction()
         {
             // Arrange
-            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns($"{seedAccountId}");
+            _mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns($"{seedAccountId}");
             var accountIdToDelete = seedAccountId;
 
             // Act
@@ -173,7 +173,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task GetAllAccounts_ShouldReturnAccounts()
         {
             // Arrange
-            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns(adminOwnerUserId);
+            _mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns(adminOwnerUserId);
 
             var accounts = new List<Account>
             {
@@ -195,7 +195,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task GetAccountById_ShouldReturnAccount_WhenExists()
         {
             // Arrange
-            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns($"{seedAccountId}");
+            _mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns($"{seedAccountId}");
             var account = new Account { Id = _seedNextAvailableAccountId, Balance = 100, Type = AccountType.Savings, OwnerUserId = $"{seedAccountId}" };
             _dbContext.Accounts.Add(account);
             _dbContext.SaveChanges();

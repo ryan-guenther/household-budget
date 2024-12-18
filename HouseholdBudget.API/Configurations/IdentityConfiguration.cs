@@ -15,9 +15,12 @@ namespace HouseholdBudget.Configurations
         /// <returns>The updated service collection.</returns>
         public static IServiceCollection AddIdentityConfiguration(this IServiceCollection services)
         {
-            services.AddIdentity<IdentityUser, IdentityRole>()
-                .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders();
+            services.AddIdentity<IdentityUser, IdentityRole>(options =>
+            {
+                options.ClaimsIdentity.RoleClaimType = "role"; // Ensure "role" is used as the claim type
+            })
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddDefaultTokenProviders();
 
             return services;
         }

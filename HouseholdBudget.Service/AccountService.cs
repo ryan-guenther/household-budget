@@ -33,7 +33,7 @@ namespace HouseholdBudget.Service
         public async Task<IEnumerable<AccountListResponseDTO>> GetAllAsync()
         {
             IEnumerable<Account> accounts;
-            var userId = _userContext.GetNumericUserId();
+            var userId = _userContext.GetGuidUserId();
 
             try
             {
@@ -73,7 +73,7 @@ namespace HouseholdBudget.Service
         public async Task<AccountDetailResponseDTO?> GetByIdAsync(int accountId)
         {
             Account? account;
-            var userId = _userContext.GetNumericUserId();
+            var userId = _userContext.GetGuidUserId();
             var isAdmin = _userContext.IsAdmin();
 
             try
@@ -159,7 +159,7 @@ namespace HouseholdBudget.Service
         {
             Account? account;
             var accountId = accountDto.Id;
-            var userId = _userContext.GetNumericUserId();
+            var userId = _userContext.GetGuidUserId();
             var isAdmin = _userContext.IsAdmin();
 
             await using (var tm = await _transactionManager.BeginTransactionAsync())
@@ -210,7 +210,7 @@ namespace HouseholdBudget.Service
 
         public async Task DeleteAsync(int accountId)
         {
-            var userId = _userContext.GetNumericUserId();
+            var userId = _userContext.GetGuidUserId();
             var isAdmin = _userContext.IsAdmin();
 
             await using (var tm = await _transactionManager.BeginTransactionAsync())

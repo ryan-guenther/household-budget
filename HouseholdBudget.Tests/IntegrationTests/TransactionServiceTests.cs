@@ -134,7 +134,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task AddTransaction_ShouldBeginAndCommitTransaction()
         {
             // Arrange
-            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns(adminOwnerUserId);
+            _mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns(adminOwnerUserId);
             int transactionId = _seedNextAvailableTransactionId;
             decimal transactionAmount = 200;
             var transactionDto = new DTO.Transaction.TransactionCreateRequestDTO { Id = transactionId, Amount = transactionAmount, Type = "Expense", AccountId = seedAccountId };
@@ -190,7 +190,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task UpdateTransaction_ShouldUpdateAndCommitTransaction()
         {
             // Arrange
-            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns(adminOwnerUserId);
+            _mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns(adminOwnerUserId);
             int transactionId = seedCreditTransactionId;
             decimal transactionAmount = 150;
             var transactionType = TransactionType.Expense;
@@ -224,7 +224,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task DeleteTransaction_ShouldDeleteAndCommitTransaction()
         {
             // Arrange
-            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns(adminOwnerUserId);
+            _mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns(adminOwnerUserId);
             var transactionIdToDelete = seedDebitTransactionId;
             var adjustedAccountBalance = seedAccountBalance + seedDebitTransactionAmount;
 
@@ -254,7 +254,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task GetAllTransactions_ShouldReturnTransactions()
         {
             // Arrange
-            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns(adminOwnerUserId);
+            _mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns(adminOwnerUserId);
             var transactions = new List<Transaction>
             {
                 new Transaction { Id = _seedNextAvailableTransactionId, Amount = 100, Type = TransactionType.Credit, AccountId = seedAccountId, OwnerUserId = adminOwnerUserId },
@@ -280,7 +280,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task GetTransactionById_ShouldReturnTransaction_WhenExists()
         {
             // Arrange
-            _mockUserContext.Setup(uc => uc.GetNumericUserId()).Returns(adminOwnerUserId);
+            _mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns(adminOwnerUserId);
             var transaction = new Transaction { Id = _seedNextAvailableTransactionId, Amount = 100, Type = TransactionType.Credit, AccountId = seedAccountId, OwnerUserId = adminOwnerUserId };
             _dbContext.Transactions.Add(transaction);
             _dbContext.SaveChanges();

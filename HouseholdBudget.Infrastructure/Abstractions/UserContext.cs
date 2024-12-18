@@ -24,14 +24,14 @@ namespace HouseholdBudget.Infrastructure
         }
 
         /// <inheritdoc />
-        public string? GetNumericUserId()
+        public string? GetGuidUserId()
         {
             var claims = _httpContextAccessor.HttpContext?.User?.Claims;
 
             if (claims == null) return null;
 
             return claims
-                .Where(c => c.Type == ClaimTypes.NameIdentifier && int.TryParse(c.Value, out _))
+                .Where(c => c.Type == ClaimTypes.NameIdentifier && Guid.TryParse(c.Value, out _))
                 .Select(c => c.Value)
                 .FirstOrDefault();
         }

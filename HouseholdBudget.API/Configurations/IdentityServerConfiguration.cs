@@ -16,7 +16,8 @@ namespace HouseholdBudget.Configurations
             new List<IdentityResource>
             {
                 new IdentityResources.OpenId(), // OpenID Connect scope
-                new IdentityResources.Profile() // User profile information
+                new IdentityResources.Profile(), // User profile information
+                new IdentityResource("roles", new[] { "role" }) // Add roles as an identity resource
             };
 
         /// <summary>
@@ -34,14 +35,13 @@ namespace HouseholdBudget.Configurations
         public static IEnumerable<Client> Clients =>
             new List<Client>
             {
-                // Example client using Resource Owner Password grant type
                 new Client
                 {
-                    ClientId = "client", // Unique client identifier
-                    AllowedGrantTypes = GrantTypes.ResourceOwnerPassword, // Username/password authentication
-                    ClientSecrets = { new Secret("secret".Sha256()) }, // Client secret for authentication
-                    AllowedScopes = { "openid", "profile", "api1" }, // Allowed scopes for the client
-                    AllowOfflineAccess = true // Enables refresh tokens for offline access
+                    ClientId = "client",
+                    AllowedGrantTypes = GrantTypes.ResourceOwnerPassword,
+                    ClientSecrets = { new Secret("secret".Sha256()) },
+                    AllowedScopes = { "openid", "profile", "api1", "roles" }, // Include "roles"
+                    AllowOfflineAccess = true
                 }
             };
     }

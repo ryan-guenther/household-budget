@@ -24,11 +24,15 @@ namespace HouseholdBudget.Infrastructure
         /// <param name="changeTracker">The change tracker containing tracked entities.</param>
         public void InterceptSave(ChangeTracker changeTracker)
         {
-            var userId = _userContext.GetNumericUserId();
+            var userId = _userContext.GetGuidUserId();
 
-            if (string.IsNullOrEmpty(userId))
+            // If there are any entries which are BaseEntity we must be authenticated to make changes
+            if(changeTracker.Entries<BaseEntity>().Any())
             {
-                throw new InvalidOperationException("Authenticated user ID could not be determined.");
+                if (string.IsNullOrEmpty(userId))
+                {
+                    throw new InvalidOperationException("Authenticated user ID could not be determined.");
+                }
             }
 
             foreach (var entry in changeTracker.Entries<BaseEntity>())
