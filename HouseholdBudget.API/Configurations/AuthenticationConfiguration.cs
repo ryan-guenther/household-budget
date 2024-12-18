@@ -33,7 +33,8 @@ namespace HouseholdBudget.Configurations
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = configuration["Jwt:Issuer"],
                     ValidAudience = configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(jwtKey)
+                    IssuerSigningKey = new SymmetricSecurityKey(jwtKey),
+                    RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
                 };
             });
 

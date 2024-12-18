@@ -4,7 +4,7 @@ namespace HouseholdBudget.Repository
 {
     public interface ITransactionRepository
     {
-        Task<IEnumerable<Transaction>> GetAllAsync();
+        IQueryable<Transaction> GetAll();
         Task<Transaction?> GetByIdAsync(int id);
         Task<Transaction> AddAsync(Transaction transaction);
         Task<Transaction> UpdateAsync(Transaction transaction);

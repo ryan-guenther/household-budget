@@ -4,6 +4,7 @@ using HouseholdBudget.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HouseholdBudget.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241213035917_AddOwnerId")]
+    partial class AddOwnerId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -245,19 +248,19 @@ namespace HouseholdBudget.Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "9E695B49-3EEA-4BAC-9A0F-73E21977E65F",
+                            Id = "1",
                             AccessFailedCount = 0,
                             ConcurrencyStamp = "b1fd63fe-c93a-41b8-b96e-b6cf5d4fcc46",
-                            Email = "admin@householdbudget.com",
+                            Email = "admin@example.com",
                             EmailConfirmed = true,
                             LockoutEnabled = false,
-                            NormalizedEmail = "ADMIN@HOUSEHOLDBUDGET.COM",
-                            NormalizedUserName = "ADMIN@HOUSEHOLDBUDGET.COM",
+                            NormalizedEmail = "ADMIN@EXAMPLE.COM",
+                            NormalizedUserName = "ADMIN@EXAMPLE.COM",
                             PasswordHash = "AQAAAAIAAYagAAAAEH0MHgXb85VobOE8N045dkFU/SISHU9gRMbIoqXMXHQpcH/JNYmnrfl3BFSo16xxew==",
                             PhoneNumberConfirmed = false,
                             SecurityStamp = "1f1f3b55-9e3a-4f51-8f42-d0bb0a622562",
                             TwoFactorEnabled = false,
-                            UserName = "admin@householdbudget.com"
+                            UserName = "admin@example.com"
                         });
                 });
 
@@ -325,7 +328,7 @@ namespace HouseholdBudget.Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            UserId = "9E695B49-3EEA-4BAC-9A0F-73E21977E65F",
+                            UserId = "1",
                             RoleId = "1"
                         });
                 });

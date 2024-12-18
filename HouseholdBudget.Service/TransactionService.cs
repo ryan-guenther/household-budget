@@ -5,6 +5,10 @@ using HouseholdBudget.Service.Interfaces;
 using Mapster;
 using Microsoft.Extensions.Logging;
 using HouseholdBudget.BusinessLogic;
+using HouseholdBudget.Infrastructure.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using HouseholdBudget.Domain;
+using Microsoft.Identity.Client;
 
 public class TransactionService : ITransactionService
 {
@@ -12,17 +16,20 @@ public class TransactionService : ITransactionService
     private readonly ITransactionRepository _transactionRepository;
     private readonly IAccountRepository _accountRepository;
     private readonly ILogger<TransactionService> _logger;
+    private readonly IUserContext _userContext;
 
     public TransactionService(
         IDbTransactionManager transactionManager,
         ITransactionRepository transactionRepository,
         IAccountRepository accountRepository,
-        ILogger<TransactionService> logger)
+        ILogger<TransactionService> logger,
+        IUserContext userContext)
     {
         _transactionManager = transactionManager;
         _transactionRepository = transactionRepository;
         _accountRepository = accountRepository;
         _logger = logger;
+        _userContext = userContext;
     }
 
     public async Task<IEnumerable<TransactionListResponseDTO>> GetAllAsync()
@@ -31,7 +38,29 @@ public class TransactionService : ITransactionService
 
         try
         {
-            transactions = await _transactionRepository.GetAllAsync();
+            transactions = await _transactionRepository.GetAll().ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            string error = "An error occurred while retrieving all transactions";
+            _logger.LogError(error, ex);
+            throw new ApplicationException($"{error}: {ex.Message}", ex);
+        }
+
+        return transactions.Adapt<IEnumerable<TransactionListResponseDTO>>();  // Automatically map from Transaction to TransactionDTO
+    }
+
+    public async Task<IEnumerable<TransactionListResponseDTO>> AdminGetAllAsync()
+    {
+        _userContext.DemandRole(Roles.Definitions.Admin);
+        IEnumerable<Transaction> transactions;
+        var userId = _userContext.GetGuidUserId();
+
+        try
+        {
+            transactions = await _transactionRepository.GetAll()
+                    .Where(a => a.OwnerUserId == userId) // Filter by user ID
+                    .ToListAsync();
         }
         catch (Exception ex)
         {
@@ -46,10 +75,50 @@ public class TransactionService : ITransactionService
     public async Task<TransactionDetailResponseDTO?> GetByIdAsync(int transactionId)
     {
         Transaction? transaction;
+        var userId = _userContext.GetGuidUserId();
+        var isAdmin = _userContext.IsAdmin();
 
         try
         {
             transaction = await _transactionRepository.GetByIdAsync(transactionId);
+
+            if (transaction == null)
+            {
+                _logger.LogWarning($"Transaction with ID {transactionId} was not found.");
+                return null;  // Transaction not found
+            }
+
+            // Enforce ownership check
+            if (!isAdmin && transaction.OwnerUserId != userId)
+            {
+                _logger.LogWarning($"Account with ID {transactionId} not found for user {userId}.");
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            string error = $"An error occurred while retrieving the transaction with ID {transactionId}";
+            _logger.LogError(error, ex);
+            throw new ApplicationException($"{error}: {ex.Message}", ex);
+        }
+
+        return transaction?.Adapt<TransactionDetailResponseDTO>();  // Automatically map from Transaction to TransactionDTO
+    }
+
+    public async Task<TransactionDetailResponseDTO?> AdminGetByIdAsync(int transactionId)
+    {
+        _userContext.DemandRole(Roles.Definitions.Admin);
+        Transaction? transaction;
+
+        try
+        {
+            transaction = await _transactionRepository.GetByIdAsync(transactionId);
+
+            if (transaction == null)
+            {
+                _logger.LogWarning($"Transaction with ID {transactionId} was not found.");
+                return null;  // Transaction not found
+            }
         }
         catch (Exception ex)
         {
@@ -64,16 +133,28 @@ public class TransactionService : ITransactionService
     public async Task<TransactionDetailResponseDTO> AddAsync(TransactionCreateRequestDTO transactionDto)
     {   
         Transaction transaction = new();
+        var accountId = transactionDto.AccountId;
+        var userId = _userContext.GetGuidUserId();
+        var isAdmin = _userContext.IsAdmin();
 
         await using (var tm = await _transactionManager.BeginTransactionAsync())
         {
             try
             {
-                var account = await _accountRepository.GetByIdAsync(transactionDto.AccountId);
+                // Fetch the account
+                var account = await _accountRepository.GetByIdAsync(accountId);
+
                 if (account == null)
                 {
-                    _logger.LogError($"Account with ID {transactionDto.AccountId} not found.");
+                    _logger.LogWarning($"Account with ID {accountId} was not found.");
                     throw new ArgumentException("Account not found.");
+                }
+
+                // Enforce ownership check
+                if (!isAdmin && account.OwnerUserId != userId)
+                {
+                    _logger.LogWarning($"User {userId} attempted to update account {accountId} without ownership.");
+                    throw new UnauthorizedAccessException("You do not have permission to update this account.");
                 }
 
                 transaction = transactionDto.Adapt<Transaction>();
@@ -101,30 +182,51 @@ public class TransactionService : ITransactionService
     public async Task<TransactionDetailResponseDTO> UpdateAsync(TransactionUpdateRequestDTO transactionDto)
     {
         Transaction? transaction = new();
+        var transactionId = transactionDto.Id;
+        var userId = _userContext.GetGuidUserId();
+        var isAdmin = _userContext.IsAdmin();
 
         await using (var tm = await _transactionManager.BeginTransactionAsync())
         {
             try
             {
-                // Fetch the account using AccountId from the transaction DTO
-                var account = await _accountRepository.GetByIdAsync(transactionDto.Id);
-                if (account == null)
-                {
-                    _logger.LogError($"Account with ID {transactionDto.Id} not found.");
-                    throw new ArgumentException("Account not found.");
-                }
+                // Fetch the transaction
+                transaction = await _transactionRepository.GetByIdAsync(transactionId);
 
-                // Fetch the original transaction by TransactionId
-                transaction = await _transactionRepository.GetByIdAsync(transactionDto.Id);
                 if (transaction == null)
                 {
-                    _logger.LogError($"Transaction with ID {transactionDto.Id} not found.");
+                    _logger.LogWarning($"Transaction with ID {transactionId} was not found.");
                     throw new ArgumentException("Transaction not found.");
                 }
 
-                if (transaction.Account.Id != transactionDto.Id)
+                // Enforce ownership check
+                if (!isAdmin && transaction.OwnerUserId != userId)
                 {
-                    _logger.LogError($"Account ID mismatch for transaction with ID {transactionDto.Id}. Account cannot be changed.");
+                    _logger.LogWarning($"User {userId} attempted to update transaction {transactionId} without ownership.");
+                    throw new UnauthorizedAccessException("You do not have permission to update this transaction.");
+                }
+
+                var accountId = transaction.AccountId;
+
+                // Fetch the account
+                var account = await _accountRepository.GetByIdAsync(accountId);
+
+                if (account == null)
+                {
+                    _logger.LogWarning($"Account with ID {accountId} was not found.");
+                    throw new ArgumentException("Account not found.");
+                }
+
+                // Enforce ownership check
+                if (!isAdmin && account.OwnerUserId != userId)
+                {
+                    _logger.LogWarning($"User {userId} attempted to update account {accountId} without ownership.");
+                    throw new UnauthorizedAccessException("You do not have permission to update this account.");
+                }
+
+                if (transaction.Account.Id != accountId)
+                {
+                    _logger.LogError($"Account ID mismatch for transaction with ID {accountId}. Account cannot be changed.");
                     throw new ArgumentException("The account associated with a transaction cannot be changed after creation.");
                 }
 
@@ -150,11 +252,11 @@ public class TransactionService : ITransactionService
                 // Commit the transaction
                 await tm.CommitAsync();
 
-                _logger.LogInformation($"Transaction with ID {transaction.Id} updated successfully.");
+                _logger.LogInformation($"Transaction with ID {transactionId} updated successfully.");
             }
             catch (Exception ex)
             {
-                string error = $"An error occurred while updating transaction with ID {transactionDto.Id}.";
+                string error = $"An error occurred while updating transaction with ID {transactionId}.";
                 _logger.LogError(error, ex);
                 await tm.RollbackAsync();
                 throw new ApplicationException($"{error}: {ex.Message}", ex);
@@ -166,24 +268,45 @@ public class TransactionService : ITransactionService
 
     public async Task DeleteAsync(int transactionId)
     {
+        var userId = _userContext.GetGuidUserId();
+        var isAdmin = _userContext.IsAdmin();
+
         await using (var tm = await _transactionManager.BeginTransactionAsync())
         {
             try
             {
-                // Fetch the transaction to be deleted by its ID
+                // Fetch the transaction
                 var transactionToDelete = await _transactionRepository.GetByIdAsync(transactionId);
+
                 if (transactionToDelete == null)
                 {
-                    _logger.LogError($"Transaction with ID {transactionId} not found.");
+                    _logger.LogWarning($"Transaction with ID {transactionId} was not found.");
                     throw new ArgumentException("Transaction not found.");
                 }
 
-                // Fetch the associated account for the transaction
-                var account = await _accountRepository.GetByIdAsync(transactionToDelete.AccountId);
+                // Enforce ownership check
+                if (!isAdmin && transactionToDelete.OwnerUserId != userId)
+                {
+                    _logger.LogWarning($"User {userId} attempted to update transaction {transactionId} without ownership.");
+                    throw new UnauthorizedAccessException("You do not have permission to update this transaction.");
+                }
+
+                var accountId = transactionToDelete.AccountId;
+
+                // Fetch the account
+                var account = await _accountRepository.GetByIdAsync(accountId);
+
                 if (account == null)
                 {
-                    _logger.LogError($"Account with ID {transactionToDelete.AccountId} associated with transaction ID {transactionId} not found.");
-                    throw new ArgumentException("Account associated with the transaction not found.");
+                    _logger.LogWarning($"Account with ID {accountId} was not found.");
+                    throw new ArgumentException("Account not found.");
+                }
+
+                // Enforce ownership check
+                if (account == null || account.OwnerUserId != userId)
+                {
+                    _logger.LogWarning($"User {userId} attempted to update account {accountId} without ownership.");
+                    throw new UnauthorizedAccessException("You do not have permission to update this account.");
                 }
 
                 // Adjust the account balance based on the transaction type

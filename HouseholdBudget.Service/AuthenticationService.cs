@@ -1,15 +1,10 @@
-﻿using HouseholdBudget.DTO.Authentication;
-using HouseholdBudget.Service.Interfaces;
+﻿using Microsoft.AspNetCore.Identity;
 using HouseholdBudget.BusinessLogic;
-using Microsoft.AspNetCore.Identity;
+using HouseholdBudget.DTO.Authentication;
 using Microsoft.Extensions.Configuration;
+using HouseholdBudget.Service.Interfaces;
 using Microsoft.Extensions.Logging;
-using HouseholdBudget.Domain;
 
-namespace HouseholdBudget.Service;
-/// <summary>
-/// Provides authentication-related operations, including user registration and login.
-/// </summary>
 public class AuthenticationService : IAuthenticationService
 {
     private readonly UserManager<IdentityUser> _userManager;
@@ -31,16 +26,15 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<string> RegisterAsync(AuthenticationCreateRequestDTO request)
     {
-        // Check if the email is already in use
+        _logger.LogInformation("Attempting to register a new user with email: {Email}", request.Email);
+
         var existingUser = await _userManager.FindByEmailAsync(request.Email);
         if (existingUser != null)
         {
-            string error = $"A user with the email {request.Email} already exists.";
-            _logger.LogError(error);
+            _logger.LogError("Registration failed: A user with email {Email} already exists.", request.Email);
             throw new InvalidOperationException("A user with this email already exists.");
         }
 
-        // Create the user
         var user = new IdentityUser
         {
             UserName = request.Email,
@@ -50,56 +44,55 @@ public class AuthenticationService : IAuthenticationService
         var result = await _userManager.CreateAsync(user, request.Password);
         if (!result.Succeeded)
         {
-            string error = $"Registration failed: {string.Join(", ", result.Errors.Select(e => e.Description))}";
-            _logger.LogError(error);
-            throw new InvalidOperationException(error);
+            _logger.LogError("Registration failed for email {Email}: {Errors}", request.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
+            throw new InvalidOperationException("Failed to create the user.");
         }
 
-        // Assign a default role to the user (optional)
-        await _userManager.AddToRoleAsync(user, Roles.Definitions.User.Name);
+        await _userManager.AddToRoleAsync(user, "User"); // Assign default role
 
-        _logger.LogInformation($"Successful regisration completed for user email {user.Email}.");
+        var roles = await _userManager.GetRolesAsync(user) ?? new List<string>();
+        string jwtKey = _configuration["Jwt:Key"];
+        string jwtIssuer = _configuration["Jwt:Issuer"];
+        string jwtAudience = _configuration["Jwt:Audience"];
+        int jwtExpiryMinutes = int.Parse(_configuration["Jwt:ExpiryMinutes"]);
+
+        _logger.LogInformation("Successfully registered user with email: {Email}", user.Email);
 
         return "Registration successful.";
     }
 
     public async Task<string> LoginAsync(AuthenticationLoginRequestDTO request)
     {
+        _logger.LogInformation("Attempting login for user with email: {Email}", request.Email);
+
         var user = await _userManager.FindByEmailAsync(request.Email);
         if (user == null)
         {
-            string error = $"Invalid login attempt for email {request.Email}.";
-            _logger.LogError(error);
-            throw new UnauthorizedAccessException(error);
+            _logger.LogWarning("Login failed: No user found with email {Email}", request.Email);
+            throw new UnauthorizedAccessException("Invalid login attempt.");
         }
 
-        // Use SignInManager to verify credentials
         var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: false);
         if (!result.Succeeded)
         {
-            string error = $"Invalid login attempt for email {request.Email}.";
-            _logger.LogError(error);
-            throw new UnauthorizedAccessException(error);
+            _logger.LogWarning("Login failed: Invalid credentials for email {Email}", request.Email);
+            throw new UnauthorizedAccessException("Invalid login attempt.");
         }
 
-        string jwtToken;
+        var roles = await _userManager.GetRolesAsync(user) ?? new List<string>();
+        string? jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? _configuration["Jwt:Key"];
+        string? jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? _configuration["Jwt:Issuer"];
+        string? jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? _configuration["Jwt:Audience"];
+        int jwtExpiryMinutes = int.Parse(Environment.GetEnvironmentVariable("JWT_EXPIRY_MINUTES") ?? _configuration["Jwt:ExpiryMinutes"]);
 
-        try
-        {
-            // Generate and return the JWT token
-            string? jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? _configuration["Jwt:Key"];
-            string? jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? _configuration["Jwt:Issuer"];
-            string? jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? _configuration["Jwt:Audience"];
-            int jwtExpiryMinutes = int.Parse(Environment.GetEnvironmentVariable("JWT_EXPIRY_MINUTES") ?? _configuration["Jwt:ExpiryMinutes"]);
-            jwtToken = AuthenticationBL.GenerateJwtToken(user, jwtKey, jwtIssuer, jwtAudience, jwtExpiryMinutes);
-        }
-        catch (Exception ex)
-        {
-            string error = $"An error occurred while attempting to login for email {request.Email}.";
-            _logger.LogError(error, ex.Message);
-            throw new ApplicationException($"{error}: {ex.Message}", ex);
-        }
-
-        return jwtToken;
+ 
+        return AuthenticationBL.GenerateJwtToken(
+            user.Id,
+            user.Email,
+            roles,
+            jwtKey,
+            jwtIssuer,
+            jwtAudience,
+            jwtExpiryMinutes);
     }
 }

@@ -1,11 +1,11 @@
 ﻿using Moq;
 using HouseholdBudget.Service;
 using HouseholdBudget.Domain.Entities;
-using HouseholdBudget.DTO;
 using HouseholdBudget.Repository;
 using Microsoft.Extensions.Logging;
 using HouseholdBudget.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using HouseholdBudget.Infrastructure.Interfaces;
 
 namespace HouseholdBudget.Tests.IntegrationTests
 {
@@ -14,6 +14,8 @@ namespace HouseholdBudget.Tests.IntegrationTests
         private readonly ApplicationDbContext _dbContext;
         private readonly Mock<IDbTransactionManager> _mockTransactionManager;
         private readonly AccountService _accountService;
+        private readonly Mock<IEntitySaveInterceptor> _mockSaveInterceptor;
+        private readonly Mock<IUserContext> _mockUserContext;
 
         public AccountServiceTests()
         {
@@ -22,8 +24,10 @@ namespace HouseholdBudget.Tests.IntegrationTests
                 .UseInMemoryDatabase(Guid.NewGuid().ToString()) // Unique database for each test run
                 .Options;
 
+            _mockSaveInterceptor = new Mock<IEntitySaveInterceptor>();
+
             // Create an instance of ApplicationDbContext
-            _dbContext = new ApplicationDbContext(options);
+            _dbContext = new ApplicationDbContext(options, _mockSaveInterceptor.Object);
 
             // Setup the mocked DbTransactionManager
             _mockTransactionManager = new Mock<IDbTransactionManager>();
@@ -35,11 +39,14 @@ namespace HouseholdBudget.Tests.IntegrationTests
             _mockTransactionManager.Setup(tm => tm.CommitAsync()).Verifiable();
             _mockTransactionManager.Setup(tm => tm.RollbackAsync()).Verifiable();
 
+            _mockUserContext = new Mock<IUserContext>();
+
             // Initialize TransactionService with the real repositories and mocked transaction manager
             _accountService = new AccountService(
                 _mockTransactionManager.Object,
                 new AccountRepository(_dbContext),
-                Mock.Of<ILogger<AccountService>>() // Mocked logger
+                Mock.Of<ILogger<AccountService>>(), // Mocked logger
+                _mockUserContext.Object
             );
 
             // Seed the database with initial data
@@ -51,12 +58,19 @@ namespace HouseholdBudget.Tests.IntegrationTests
         const string seedAccountName = "Test Account";
         const AccountType seedAccountType = AccountType.Savings;
         const decimal seedAccountBalance = 1000;
+        const string adminOwnerUserId = "1";
 
         int _seedNextAvailableAccountId;
 
         private void SeedDatabase()
         {
-            var account = new Account(seedAccountId, seedAccountName, seedAccountType, seedAccountBalance);
+            var account = new Account
+            {
+                Id = seedAccountId,
+                Balance = seedAccountBalance,
+                Type = seedAccountType,
+                OwnerUserId = adminOwnerUserId
+            };
 
             _dbContext.Accounts.Add(account);
             _dbContext.SaveChanges();
@@ -114,6 +128,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task UpdateAccount_ShouldUpdateAndCommitTransaction()
         {
             // Arrange
+            _mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns($"{seedAccountId}");
             int accountId = seedAccountId;
             decimal accountBalance = (decimal)375.12;
             string accountName = "New account name.";
@@ -139,6 +154,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task DeleteAccount_ShouldDeleteAndCommitTransaction()
         {
             // Arrange
+            _mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns($"{seedAccountId}");
             var accountIdToDelete = seedAccountId;
 
             // Act
@@ -157,10 +173,12 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task GetAllAccounts_ShouldReturnAccounts()
         {
             // Arrange
+            _mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns(adminOwnerUserId);
+
             var accounts = new List<Account>
             {
-                new Account { Id = _seedNextAvailableAccountId, Name = "Account 1", Type = AccountType.Chequing },
-                new Account { Id = _seedNextAvailableAccountId + 1, Name = "Account 2", Type = AccountType.Savings }
+                new Account { Id = _seedNextAvailableAccountId, Name = "Account 1", Type = AccountType.Chequing, OwnerUserId = $"{seedAccountId}"  },
+                new Account { Id = _seedNextAvailableAccountId + 1, Name = "Account 2", Type = AccountType.Savings, OwnerUserId = $"{seedAccountId}"  }
             };
             var expectedAccountsCount = accounts.Count() + (_seedNextAvailableAccountId - 1);
             _dbContext.Accounts.AddRange(accounts);
@@ -177,7 +195,8 @@ namespace HouseholdBudget.Tests.IntegrationTests
         public async Task GetAccountById_ShouldReturnAccount_WhenExists()
         {
             // Arrange
-            var account = new Account { Id = _seedNextAvailableAccountId, Balance = 100, Type = AccountType.Savings };
+            _mockUserContext.Setup(uc => uc.GetGuidUserId()).Returns($"{seedAccountId}");
+            var account = new Account { Id = _seedNextAvailableAccountId, Balance = 100, Type = AccountType.Savings, OwnerUserId = $"{seedAccountId}" };
             _dbContext.Accounts.Add(account);
             _dbContext.SaveChanges();
 

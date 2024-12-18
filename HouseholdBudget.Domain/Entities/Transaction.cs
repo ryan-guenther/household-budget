@@ -8,9 +8,8 @@ namespace HouseholdBudget.Domain.Entities
         Credit
     }
 
-    public class Transaction : IEntity, ITrackable
+    public class Transaction : BaseEntity, IEntity, ITrackable
     {
-        public int Id { get; set; }
         public decimal Amount { get; set; }  // Amount for the transaction (positive for Credit, negative for Expense)
         public DateTime Date { get; set; }  // Date of the transaction
         public string Description { get; set; } = string.Empty;  // Description of the transaction

@@ -4,7 +4,7 @@ namespace HouseholdBudget.Repository
 {
     public interface IAccountRepository
     {
-        Task<IEnumerable<Account>> GetAllAsync();
+        IQueryable<Account> GetAll();
         Task<Account?> GetByIdAsync(int id);
         Task<Account> AddAsync(Account account);
         Task<Account> UpdateAsync(Account account);

@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using Microsoft.Extensions.Logging;
+using HouseholdBudget.Infrastructure.Interfaces;
 
 namespace HouseholdBudget.Tests.IntegrationTests
 {
@@ -17,6 +18,7 @@ namespace HouseholdBudget.Tests.IntegrationTests
         private readonly Mock<UserManager<IdentityUser>> _mockUserManager;
         private readonly Mock<SignInManager<IdentityUser>> _mockSignInManager;
         private readonly Mock<IConfiguration> _mockConfiguration;
+        private readonly Mock<IEntitySaveInterceptor> _mockSaveInterceptor;
 
         public AuthenticationServiceTests()
         {
@@ -25,7 +27,9 @@ namespace HouseholdBudget.Tests.IntegrationTests
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
-            _dbContext = new ApplicationDbContext(options);
+            _mockSaveInterceptor = new Mock<IEntitySaveInterceptor>();
+
+            _dbContext = new ApplicationDbContext(options, _mockSaveInterceptor.Object);
 
             // Mock UserManager and SignInManager
             _mockUserManager = MockUserManager();

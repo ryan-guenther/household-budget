@@ -1,50 +1,51 @@
 ﻿using HouseholdBudget.Domain.Entities;
 using HouseholdBudget.Infrastructure;
-
 using Microsoft.EntityFrameworkCore;
 
 namespace HouseholdBudget.Repository
 {
     public class AccountRepository : IAccountRepository
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext _dbContext;
 
-        public AccountRepository(ApplicationDbContext context)
+        public AccountRepository(ApplicationDbContext dbContext)
         {
-            _context = context;
+            _dbContext = dbContext;
         }
 
-        public async Task<IEnumerable<Account>> GetAllAsync()
+        public IQueryable<Account> GetAll()
         {
-            return await _context.Accounts.Include(a => a.Transactions).ToListAsync();  // Include transactions for each account
+            return _dbContext.Accounts.AsQueryable();
         }
 
         public async Task<Account?> GetByIdAsync(int id)
         {
-            return await _context.Accounts.Include(a => a.Transactions).FirstOrDefaultAsync(a => a.Id == id);
+            return await _dbContext.Accounts
+                .Where(a => a.Id == id)
+                .FirstOrDefaultAsync();
         }
 
         public async Task<Account> AddAsync(Account account)
         {
-            await _context.Accounts.AddAsync(account);
-            await _context.SaveChangesAsync();
+            await _dbContext.Accounts.AddAsync(account);
+            await _dbContext.SaveChangesAsync();
             return account;
         }
 
         public async Task<Account> UpdateAsync(Account account)
         {
-            _context.Accounts.Update(account);
-            await _context.SaveChangesAsync();
+            _dbContext.Accounts.Update(account);
+            await _dbContext.SaveChangesAsync();
             return account;
         }
 
         public async Task DeleteAsync(int id)
         {
-            var account = await _context.Accounts.FindAsync(id);
+            var account = await _dbContext.Accounts.FindAsync(id);
             if (account != null)
             {
-                _context.Accounts.Remove(account);
-                await _context.SaveChangesAsync();
+                _dbContext.Accounts.Remove(account);
+                await _dbContext.SaveChangesAsync();
             }
         }
     }
